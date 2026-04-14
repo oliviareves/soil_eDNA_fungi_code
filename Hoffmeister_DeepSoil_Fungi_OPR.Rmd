@@ -1,0 +1,1302 @@
+---
+title: "Hoffmeister_DeepSoil_Fungi_OPR"
+output:
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+#Installing Packages
+```{r}
+install.packages("phyloseq")
+library(dplyr)
+#library(phyloseq)
+library(vegan)
+library(ggplot2)
+library(data.table)
+library(rdist)
+#library(adespatial)
+#library(devtools)
+#library(factoextra)
+library(ggpubr)
+library(stringr)
+library(tibble)
+library(ExpDes)
+library(tidyverse)
+library(plyr)
+library(ggh4x)
+library(indicspecies)
+#library(pairwiseAdonis)
+#library(broom)
+library(kableExtra)
+library(agricolae)
+library(Matrix)
+library(lme4)
+library(gridExtra)
+library(patchwork)
+library(scales)
+library(car)
+#library(caret)
+#library(VIM)
+#library(geosphere)
+library(corrplot)
+library(emmeans)
+library(effectsize)
+library(readr)
+library(nlme)
+```
+
+#Color Packages
+```{r}
+color_palette1 <- c("darkgreen", "darkgoldenrod1", "darkgoldenrod")
+color_palette2 <- c("darkgreen", "darkgoldenrod1", "darkgoldenrod", "darkred")
+color_palette4 <- c("darkgreen","#DBCA69","#D57500", "#613318")
+color_palette5 <- c("darkgreen","#DBCA69","#D57500", "#613318","darkred")
+
+palette_NMDS <- c("darkred", "darkgreen", "darkorange", "burlywood3", 
+             "darkblue", "pink", "lightgray", "blue", "red",
+             "darkgrey", "chartreuse3", "orange") 
+
+
+color_pal_alt <- c("#006400", "#8B4513", "#D2B48C")
+
+color_values_eco <- c("#eeeeee", "darkgrey",  "darkorange","darkgreen","darkred", "burlywood", "burlywood3", "burlywood4", "tan3")
+
+
+color_values_genus <- c("#eeeeee", "burlywood3", "#065535", "#99CCFF", "darkseagreen4", "burlywood4", "#660033", "#FF9966", "#CBD588", "#5F7FC7", "orange", "#DA5724", "#508578", "#CD9BCD", "darkolivegreen4", "darkred", "#673770", "#D14285", "aquamarine4", "#652926", "#8569D5", "#5E738F", "#D1A33D", "#8A7C64", "#599861", "#C84248", "#FFCC66", "#FFFF66", "#CC3300", "#999999", "burlywood2", "#CC6600")
+
+
+color_values_phylum <- c("#eeeeee","burlywood3", "#99CCFF", "#065535", "darkseagreen4", "#3333CC", "#660033", "#FF9966", "#CC6600", "#CBD588", "#5F7FC7", "orange", "#DA5724", "#508578", "#CD9BCD", "darkolivegreen4", "darkred", "#673770", "#D14285", "aquamarine4", "#652926", "#8569D5", "#5E738F", "#D1A33D", "#8A7C64", "#599861", "#C84248", "#FFCC66", "#FFFF66", "#CC3300", "#999999")
+
+
+colors_geneco <- c("#eeeeee",
+                   "darkgrey", "gray","#83929F",
+                   
+                   "chartreuse4",
+                   "darkgreen","#003300",
+                   "darkolivegreen", "darkseagreen4",
+                   "olivedrab", 
+                   "mediumseagreen", "springgreen3",
+                   "springgreen4", "palegreen4",
+                   "darkseagreen2","paleturquoise4",
+                   "darkred",
+                   "burlywood3", 
+                   
+                   "cornsilk1", 
+                   "chocolate4",
+                   "lightgoldenrod", 
+                   "sandybrown",
+                   "tan3", "tan4",
+                   "rosybrown4",                "wheat1", 
+                   "tan", "sienna","antiquewhite4","seashell4")
+
+
+colors_p <- c("#065535", "darkseagreen4", "#3333CC", "#660033", "#FF9966", "#CC6600", "#CBD588", "#5F7FC7", "orange", "#DA5724", "#508578")
+
+color_palette5 <- c("darkgreen","darkred","tan","#DBCA69","#D57500", "#613318", "#FF9966", "#CC6600", "#CBD588", "#5F7FC7", "orange", "#DA5724","antiquewhite4")
+```
+#Setting a theme 
+```{r}
+mytheme <-   theme(panel.grid.minor=element_blank(), #gets rid of grey and lines in the middle
+                   panel.grid.major=element_blank(), #gets rid of grey and lines in the middle
+                   panel.background=element_rect(fill="white"),#gets rid of grey and lines in the middle
+                   axis.title.x = element_text( size=14, color="black", face="bold"), #size of x-axis title
+                   axis.title.y = element_text(size=14, color="black", face="bold"), #size of y-axis title
+                   axis.text.x = element_text(size=12, color="black"),#size of x-axis text
+                   axis.line=element_line(linewidth=1,color="black"),
+                   axis.text.y = element_text(size=12, color="black"))#size of y-axis text
+```
+
+#Data Pre-Processing
+##Loading in the data
+```{r}
+metadata <- read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/2023_SlovakiaRomania_DeepSoileDNA_metadatacsv.csv", sep = ",", row.names = 1)
+
+taxonomy_data <- read.csv("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Fungi_BLAST_Table.csv", sep = ",", stringsAsFactors = FALSE, header = TRUE)
+
+otutab_fun  <-  read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Fungi_OTU_Table.csv", sep = ",", row.names = 1)
+```
+##Taxonomy Best hits for fungi
+```{r}
+taxonomy_data_fun <- taxonomy_data
+
+colnames(taxonomy_data_fun)
+
+# Check for rows with STATUS == "NO HIT" 
+taxonomy_data_fun <- taxonomy_data_fun %>%
+  filter(STATUS != "NO HIT")
+
+# Split SEQ TITLE into OTU_ID, Mostabund, and Size
+taxonomy_data_fun <- taxonomy_data_fun %>%
+  separate(`SEQ.TITLE`, into = c("OTU_ID", "Mostabund", "Size"), sep = "\\|", remove = TRUE, fill = "right")
+
+# Split Description into taxonomic levels and other metadata, handle missing pieces
+#taxonomy_data_fun <- taxonomy_data_fun %>%
+  #separate(Description, into = c("Species_hypothesis", "Accession_number", "Taxonomy", "Ecology"), sep = "\\|", remove = TRUE, fill = "right") %>%
+  #separate(Taxonomy, into = c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = ";", remove = TRUE, fill = "right") %>%
+  #separate(Ecology, into = c("Ecology_primary"), sep = "\\*", extra = "drop", fill = "right")
+
+#ALREADY DID THIS AS PART OF SEED2 TUTORIAL IN EXCEL.
+colnames(taxonomy_data_fun)
+
+#I'm a little confused on this step:
+best_hits_fun <- taxonomy_data_fun %>%
+  group_by(OTU_ID) %>%
+  arrange(`E.value`) %>% # Ensure hits are sorted by E value within each OTU
+  filter(!grepl("Incertae_sedis", Genus)) %>% # Exclude "Incertae_sedis" from Genus
+  slice_head(n = 1) %>% # Select the first hit (best valid hit)
+  ungroup()
+
+# Step 2: Handle OTUs where all hits have "Incertae_sedis" in Genus
+# For such cases, fall back to selecting the hit with the lowest E value
+fallback_hits_fun <- taxonomy_data_fun %>%
+  group_by(OTU_ID) %>%
+  filter(grepl("Incertae_sedis", Genus)) %>% # Only consider "Incertae_sedis" hits
+  slice_min(order_by = `E.value`, n = 1, with_ties = FALSE) %>% # Select lowest E value
+  ungroup()
+
+# Combine the best hits with fallback hits where necessary
+final_hits_fun <- bind_rows(best_hits_fun, fallback_hits_fun) %>%
+  distinct(OTU_ID, .keep_all = TRUE) %>% # Ensure only one hit per OTU
+  arrange(OTU_ID) # Sort by OTU_ID for clarity
+
+# Add the "Genus_corrected" column if similarity is below 90%
+final_hits_fun <- final_hits_fun %>%
+  mutate(
+    Genus_corrected = ifelse(`Similarity...` < 90, "unassigned", Genus),
+    Ecology_corrected = ifelse(`Similarity...` < 90, "Unknown", FunctionalGuild1)
+  )
+
+# Print the resulting data frame to verify
+```
+##Combining data
+```{r}
+#Count how many sequences per OTU
+otutab_fun$Counts <- rowSums(otutab_fun)
+# Check the minimum number
+min(otutab_fun$Counts) #when I run this, I get [1] 0 instead of [1] 1
+otutab_fun <- otutab_fun[otutab_fun$Counts > 0, ]
+min(otutab_fun$Counts) #this fixes it
+
+#joining otu table with taxonomy
+otutax_fun <- left_join(rownames_to_column(otutab_fun, "OTU_ID"), taxonomy_data_fun, by = "OTU_ID")
+
+# Display fungal ecology categories 
+
+unique(otutax_fun$FunctionalGuild1)
+
+#getting rid of unnecessary columns- not in tijana's code
+otutax_fun <- otutax_fun %>%
+  select(-X, -X.1, -no.hit)
+
+#displaying all columns in new joined table
+colnames(otutax_fun)
+# Singletons and non-fungal OTUs removed (sometimes there is non specific amplification of other eukaryots)
+# Check if there is only fungi
+unique(otutax_fun$Kingdom)
+
+```
+```{r}
+# Ecology categories are already chosen, we will remove prefixes from taxonomy
+otutax_filtered_fun <- otutax_fun %>% 
+  mutate(Genus = str_replace(Genus, "g__", ""),
+         Phylum = str_replace(Phylum, "p__", ""),
+         Kingdom = str_replace(Kingdom, "k__", "")) %>%
+  filter(Counts > 1 & Kingdom == "Fungi" & E.value < 1e-50) %>%
+  mutate(Genus = ifelse(Similarity... < 90, "unclassified", Genus),
+         Family = ifelse(Similarity... < 85, "unclassified", Family),
+         Order = ifelse(Similarity... < 80, "unclassified", Order),
+         FunctionalGuild1 = ifelse(Similarity... < 90, "Unknown", FunctionalGuild1),
+         Ecology_new = case_when(
+           FunctionalGuild1 == "soil_saprotroph" ~ "Saprotroph (soil)",
+      FunctionalGuild1 %in% c(
+        "litter_saprotroph",
+        "unspecified_saprotroph",
+        "dung_saprotroph",
+        "pollen_saprotroph"
+      ) ~ "Saprotroph (other)",
+      FunctionalGuild1 == "wood_saprotroph" ~ "Saprotroph (wood)",
+      FunctionalGuild1 == "plant_pathogen" ~ "Plant pathogen",
+      FunctionalGuild1 == "ectomycorrhizal" ~ "EcM",
+      FunctionalGuild1 == "ericoid_mycorrhizal" ~ "ErM",
+      FunctionalGuild1 == "Unknown" ~ "Unknown", 
+      FunctionalGuild1 == "ND" ~ "Unknown" , # keep Unknown as Unknown
+      TRUE ~ "Others"
+         ))
+# Check
+unique(otutax_filtered_fun$Kingdom)
+
+unique(otutax_filtered_fun$Ecology_new)
+
+# Add Genus_Phylum column and Genus_ecology
+otutax_filtered_fun$Genus_phylum <- paste0(otutax_filtered_fun$Genus, " (", otutax_filtered_fun$Phylum, ")")
+head(unique(otutax_filtered_fun$Genus_phylum)) 
+
+otutax_filtered_fun$Genus_ecology <- paste0(otutax_filtered_fun$Genus, " (", otutax_filtered_fun$Ecology_new, ")")
+head(otutax_filtered_fun$Genus_ecology)
+
+#split again into filtered otu and tax (to use in phyloseq) [, 2:(ncol(otu_table) + 1)]
+
+otutab_filtered_fun <- otutax_filtered_fun %>% 
+  select(1:161) %>% 
+  remove_rownames() %>% 
+  column_to_rownames(var = "OTU_ID")
+
+tax_filtered_fun <- otutax_filtered_fun %>% 
+  select(OTU_ID, Kingdom:Ecology_new, Genus_phylum:Genus_ecology) %>% 
+  remove_rownames %>% 
+  column_to_rownames(var = "OTU_ID")
+
+```
+
+#Alpha Diversity
+```{r}
+# I prefer this way, but it can be done with phyloseq object as well
+
+min_depth <- min(colSums(otutax_filtered_fun[,2:(ncol(otutab_filtered_fun) + 1)])) 
+min_depth
+
+# rarefying to the min number of sequences, this is important to have the samples comparable
+
+t_otutable <- as.data.frame((t(otutab_filtered_fun))) #transpose otu table for use in vegan, rows are samples, columns are otus
+
+# Using rrarefy from vegan -   random subsampling to same number of sequences
+t_otus_rarefied <- as.data.frame(round(rrarefy(t_otutable, 4654)))
+
+# Calculate richness, Shannon, evenness
+# Richness = observed number of species
+
+richness <- as.data.frame(specnumber(t_otus_rarefied, MARGIN = 1)) %>% setnames("richness") 
+shannon <- as.data.frame(diversity(t_otus_rarefied, index = "shannon", MARGIN = 1, base = exp(1))) %>% setnames("shannon") 
+evenness <- as.data.frame(shannon/log(richness)) %>% setnames("evenness")
+
+# Combine diversity into one table
+
+diversity <- print(list(rownames_to_column(metadata, "Sample_ID"), 
+                       rownames_to_column(richness, "Sample_ID"), 
+                       rownames_to_column(shannon, "Sample_ID"), 
+                       rownames_to_column(evenness, "Sample_ID"))) %>%
+  reduce(left_join, by = "Sample_ID")
+
+write.csv(diversity, file = "diversity.csv")
+
+#the low diversity associated with HOF120 corresponds to the incredibly low read count (4)- check notepad file 
+
+colnames(diversity)
+
+diversity_summary <-  diversity  %>%
+  group_by(Country, Forest_Stand, Soil_Horizon) %>%
+  dplyr::summarise(mean_richness= mean(richness),
+            sd_richness = sd(richness),
+            n_richness = n(), 
+            SE_richness = sd(richness)/sqrt(n()),
+            mean_shannon= mean(shannon),
+            sd_shannon = sd(shannon),
+            n_shannon = n(), 
+            SE_shannon = sd(shannon)/sqrt(n()),
+            mean_evenness= mean(evenness),
+            sd_evenness = sd(evenness),
+            n_evenness = n(), 
+            SE_evenness = sd(evenness)/sqrt(n()))
+
+diversity_summary
+```
+#Plotting Alpha Diversity
+```{r}
+# Create ymin and ymax columns for richness, shannon, and evennes
+
+diversity_summary <- diversity_summary %>%
+  mutate(ymin_richness = mean_richness - sd_richness,
+         ymax_richness = mean_richness + sd_richness,
+         ymin_shannon = mean_shannon - sd_shannon,
+         ymax_shannon = mean_shannon + sd_shannon,
+         ymin_evenness = mean_evenness - sd_evenness,
+         ymax_evenness = mean_evenness + sd_evenness)
+
+diversity_summary$Soil_Horizon <- factor (diversity_summary$Soil_Horizon, 
+                                                      levels = c("FH",
+                                                                 "1",
+                                                                 "2", "3", "4"))
+
+
+# The plot, using ggplot package
+# This is a function to create our plots, it can be customized
+
+generate_diversity_plot <- function(data, y_var, y_label, ymin, ymax, fill_var, color_palette) {
+  ggplot(data, aes(x = Soil_Horizon, y = !!sym(y_var), fill = !!sym(fill_var))) + 
+    geom_col(color = "black") +
+    scale_fill_manual(values = color_palette) +
+    geom_errorbar(aes(ymin = !!sym(ymin), ymax = !!sym(ymax)), width = 0.2) +
+    theme_classic() +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_text(size = 8, face = "bold"),
+          strip.text.x = element_text(size = 7, face = "bold"),
+          axis.title.y = element_text(size = 8, face = "bold"),
+          axis.text.y = element_text(size = 7, face = "bold"),
+          legend.text = element_text(size = 8), 
+          legend.title = element_blank(),
+          legend.position = "bottom") + 
+    guides(fill = guide_legend(nrow = 3)) +
+    labs(y = y_label) +
+    facet_grid(~Country+Forest_Stand)
+}
+
+
+# Generate plots using previously created fungion
+
+
+plot_richness <- generate_diversity_plot(diversity_summary, "mean_richness", "Mean Richness", "ymin_richness", "ymax_richness", "Soil_Horizon", color_palette5)
+plot_shannon <- generate_diversity_plot(diversity_summary, "mean_shannon", "Mean Shannon", "ymin_shannon", "ymax_shannon", "Soil_Horizon", color_palette5)
+plot_evenness <- generate_diversity_plot(diversity_summary, "mean_evenness", "Mean Evenness", "ymin_evenness", "ymax_evenness", "Soil_Horizon", color_palette5)
+
+# Combine three graphs into one with ggarrange
+
+arranged_fun_div <- ggarrange(plot_richness, plot_shannon, plot_evenness, nrow = 1, common.legend = TRUE)
+
+# Annotate the arranged plots with a custom title at the bottom
+annotated_fun_div <- annotate_figure(arranged_fun_div,
+                                  top = text_grob("Alpha diversity by depth", 
+                                                     color = "black", size = 14, 
+                                                     face = "bold"))
+
+# Plot combined and annotated graph
+plot(annotated_fun_div)
+ggsave("annotated_fun_div.png", width = 14, height = 8, units = "in")
+```
+#Stats for Alpha Diversity
+##ANOVA
+```{r}
+# Here is the base code of using ANOVA (aov funcion) in vegan package 
+
+# Is richness significantly different between roots, soil, and litter?
+
+summary(aov(richness ~ Soil_Horizon, data = diversity))
+
+# How about forest management?
+
+summary(aov(richness ~ Forest_Stand, data = diversity))
+
+# Here is the code to make a function that does anova automatically for selected list of predictors, and then run it for richness, shannon, evenness
+
+# Perform ANOVA
+perform_anova <- function(response, predictor, data) {
+  aov_result <- aov(reformulate(predictor, response), data = data)
+  summary_df <- broom::tidy(aov_result)
+  summary_df$response <- response
+  summary_df$predictor <- predictor
+  return(summary_df)
+}
+
+# List of predictors
+predictors <- c("Soil_Horizon", "Country")
+
+# Perform ANOVA for richness, shannon, and evenness, and combine results
+anova_results <- bind_rows(
+  lapply(predictors, perform_anova, response = "richness", data = diversity),
+  lapply(predictors, perform_anova, response = "shannon", data = diversity),
+  lapply(predictors, perform_anova, response = "evenness", data = diversity)
+)
+
+# Display the combined summary in a table using kable
+anova_results %>%
+  select(response, predictor, term, df, sumsq, meansq, statistic, p.value) %>%
+  kable(format = "html", caption = "ANOVA Summary for Richness, Shannon, and Evenness") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+```{r}
+# Function to perform Tukey's HSD test and extract results
+perform_tukey <- function(response, predictor, data) {
+  model <- aov(reformulate(predictor, response), data = data)
+  tukey <- HSD.test(model, predictor, group = TRUE)
+  tukey_df <- as.data.frame(tukey$groups)
+  tukey_df$Treatment <- rownames(tukey_df)
+  tukey_df$response <- response
+  tukey_df$predictor <- predictor
+  return(tukey_df)
+}
+
+# Function to calculate means for each level of a factor
+calculate_means <- function(response, predictor, data) {
+  mean_df <- data %>%
+    group_by(!!sym(predictor)) %>%
+    summarise(mean_value = mean(!!sym(response), na.rm = TRUE)) %>%
+    mutate(Treatment = !!sym(predictor)) %>%
+    select(Treatment, mean_value)
+  mean_df$response <- response
+  mean_df$predictor <- predictor
+  return(mean_df)
+}
+
+# Perform Tukey's test and calculate means for each combination of predictor and response
+tukey_results <- bind_rows(
+  lapply(predictors, function(p) perform_tukey("richness", p, data = diversity)),
+  lapply(predictors, function(p) perform_tukey("shannon", p, data = diversity)),
+  lapply(predictors, function(p) perform_tukey("evenness", p, data = diversity))
+)
+
+
+# Display Tukey's test results with means in a table using kable
+
+tukey_results %>%
+  select(response, predictor, Treatment, groups) %>%
+  kable(format = "html", caption = "Tukey's Test Results for Richness, Shannon, and Evenness") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+#from Tijana's code: We see that compartments are all different from each other when it comes to richness, but for shannon Litter and Soil are similar (both contain a), Soil and Roots are similar (both contain b), and Litter and Roots are different (a vs b)
+# Assuming 'diversity_summary' is your final combined data frame
+knitr::kable(diversity_summary, 
+             caption = "Combined Summary for Richness, Shannon, and Evenness")
+```
+#Beta Diversity
+##Plotting NMDS
+###Plotting exploratory NMDS for soil horizon vs forest stand (no environmental arrows)
+```{r}
+
+library(vegan)
+library(dplyr)
+library(ggplot2)
+
+# ----------------------------
+# 1. COMMUNITY MATRIX
+# ----------------------------
+
+otu_hell_fun <- as.data.frame(decostand(t_otutable, method = "hell"))
+
+# remove unwanted sample
+otu_hell_fun <- otu_hell_fun[rownames(otu_hell_fun) != "HOF120", ]
+
+# ----------------------------
+# 2. METADATA
+# ----------------------------
+
+metadata_clean <- metadata
+metadata_clean <- metadata_clean[rownames(metadata_clean) != "HOF120", ]
+
+mapping2 <- data.frame(Sample_names = rownames(metadata_clean),
+                       metadata_clean,
+                       row.names = NULL)
+
+# align order to community matrix
+mapping2 <- mapping2[match(rownames(otu_hell_fun), mapping2$Sample_names), ]
+
+# safety check
+stopifnot(all(rownames(otu_hell_fun) == mapping2$Sample_names))
+
+# ----------------------------
+# 3. NMDS
+# ----------------------------
+
+set.seed(123)
+veganNMDS <- metaMDS(otu_hell_fun, distance = "bray")
+
+# extract NMDS scores (NO tibble)
+nmds_points <- as.data.frame(veganNMDS$points)
+nmds_points$Sample_names <- rownames(nmds_points)
+
+# rename axes
+colnames(nmds_points)[1:2] <- c("NMDS1", "NMDS2")
+
+# merge with metadata
+final_NMDS <- merge(nmds_points, mapping2, by = "Sample_names")
+
+# ----------------------------
+# 4. NMDS PLOT (NO ENVFIT)
+# ----------------------------
+
+NMDS_plot <- ggplot(final_NMDS,
+                    aes(x = NMDS1, y = NMDS2,
+                        color = Forest_Stand,
+                        shape = Soil_Horizon)) +
+
+  geom_point(size = 6) +
+
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        legend.text = element_text(size = 15),
+        legend.position = "left") +
+
+  labs(title = "NMDS of microbial communities") +
+
+  scale_color_manual(values = color_palette5)
+
+NMDS_plot
+
+ggsave("NMDS_plot_only.png", width = 14, height = 8, units = "in")
+```
+###Plotting NMDS for soil horizon vs forest stand with environmental arrows
+```{r}
+library(vegan)
+library(ggplot2)
+
+# ----------------------------
+# ENVFIT
+# ----------------------------
+
+set.seed(674375397)
+
+data.envfit.nmds <- envfit(
+  veganNMDS,
+  mapping2[, c("C_in_g_per_m_square",
+               "N_in_g_per_m_square",
+               "CN_ratio_g_per_m_square",
+               "Total_C_in_Mg_per_ha")]
+)
+
+# extract vectors
+data.envfit.spec.nmds <- as.data.frame(
+  scores(data.envfit.nmds, display = "vectors") *
+    ordiArrowMul(data.envfit.nmds)
+)
+
+data.envfit.plot.nmds <- data.envfit.spec.nmds
+data.envfit.plot.nmds$variables <- rownames(data.envfit.spec.nmds)
+
+# add p-values
+data.envfit.plot.nmds$pval <- data.envfit.nmds$vectors$pvals[
+  match(data.envfit.plot.nmds$variables,
+        names(data.envfit.nmds$vectors$pvals))
+]
+
+# scale arrows
+data.envfit.plot.nmds[,1:2] <- data.envfit.plot.nmds[,1:2] * 3
+
+# ----------------------------
+# PLOT WITH ENVFIT
+# ----------------------------
+
+NMDS_plot_envfit <- ggplot(final_NMDS,
+                           aes(x = NMDS1, y = NMDS2,
+                               color = Forest_Stand,
+                               shape = Soil_Horizon)) +
+
+  geom_point(size = 6) +
+
+  geom_segment(data = data.envfit.plot.nmds,
+               aes(x = 0, y = 0,
+                   xend = NMDS1, yend = NMDS2,
+                   linetype = pval < 0.05),
+               arrow = arrow(length = unit(0.3, "cm")),
+               color = "black",
+               linewidth = 1,
+               inherit.aes = FALSE) +
+
+  geom_text(data = data.envfit.plot.nmds,
+            aes(x = NMDS1, y = NMDS2, label = variables),
+            size = 3,
+            inherit.aes = FALSE) +
+
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        legend.text = element_text(size = 15),
+        legend.position = "left") +
+
+  scale_color_manual(values = color_palette5) +
+
+  guides(shape = guide_legend(order = 1),
+         color = guide_legend(order = 2),
+         linetype = guide_legend(title = "p < 0.05"))
+
+NMDS_plot_envfit
+
+ggsave("NMDS_plot_envfit.png", width = 14, height = 8, units = "in")
+#so, perhaps C drives fungal communities? Let's see
+data.envfit.nmds$vectors$pvals
+
+```
+
+##Relative Abundance
+```{r}
+# Helper function to calculate relative abundance using phyloseq
+
+calculate_relative_abundance <- function(physeq_obj) {
+  transform_sample_counts(physeq_obj, function(x) { x / sum(x) })
+}
+
+# Helper function to prune taxa based on given top taxa using phyloseq
+prune_top_taxa <- function(physeq_obj, tax_rank, top_taxa) {
+  prune_taxa(tax_table(physeq_obj)[, tax_rank] %in% top_taxa, physeq_obj)
+}
+
+# Helper function to generate relative abundance plots, with ggplot, can be customized 
+generate_relative_abundance_plot <- function(data, x_var, y_var, fill_var, title, color_values) {
+  ggplot(data, aes_string(x = x_var, y = y_var, fill = fill_var)) + 
+    theme_bw() +
+    geom_bar(stat = 'identity', position = "fill", width = .8) +
+    theme(axis.text.x = element_text(angle = 90, size = 14, face = "bold"),
+          axis.text.y = element_text(size = 14, face = "bold"),
+          strip.text.x = element_text(size = 14, face = "bold"),
+          legend.text = element_text(size = 18, face = "italic"),
+          legend.position = "right",
+          axis.title.y = element_text(size = 14, face = "bold"),
+          axis.title.x = element_text(size = 14, face = "bold"),
+          legend.title = element_text(size = 14),
+          plot.margin = unit(c(1, 1, 1, 1), "cm")) +
+    scale_fill_manual(values = color_values) +
+    labs(x = "", y = "Relative abundance", title = title) +
+    guides(fill = guide_legend(ncol = 1)) +
+    facet_grid(~locality_year+Forest, drop = TRUE, scales = "free", space = "free", labeller = label_wrap_gen(width = 15))
+}
+
+# Create phyloseq object
+
+otu_fin <- otu_table(otutab_filtered_fun, taxa_are_rows = TRUE)
+tax_fin <- tax_table(as.matrix(tax_filtered_fun))
+mapping_fin <- sample_data(metadata)
+
+finmer <- phyloseq(otu_fin, tax_fin, mapping_fin) #this will be used for beta diversity
+finmer
+
+
+# Calculate relative abundance (function we made)
+finmer_relabund <- transform_sample_counts(finmer, function(x) { x / sum(x) })
+
+# Melt the data - this transforms the phyloseq grande table to R data frame (a big, long table with all information that we need)
+# finmer_melt <- psmelt(finmer_relabund)
+
+# Calculate total sums for genus (sum of raw sequence reads, to see which taxa are most abundant accross the dataset), we combine all OTUs of the same Genus
+
+finmer_sum <- tapply(taxa_sums(finmer), tax_table(finmer)[, "Genus"], sum, na.rm = TRUE)
+# Look at the finmer_sum under Values in the Environment, you will see that there is 1239 genera in total, we will select 20 most abundant ones to plot, and put the rest into "Others"; 1239 is impossible to visualise and also not very informative
+
+# Select top genera
+top_genus <- names(sort(finmer_sum, TRUE))[1:20] # select top 20 genera
+other_genus <- names(sort(finmer_sum, TRUE))[21:1412] #this is the rest
+
+# Prune to top genera - create datasets with both top and other genera, take relative abundance phyloseq 
+
+top_genus_prune <- prune_top_taxa(finmer_relabund, "Genus", top_genus)
+other_genus_prune <- prune_top_taxa(finmer_relabund, "Genus", other_genus)
+
+# Melt the data - this transforms the phyloseq grande table to R data frame (a big, long table with all information that we need), we have two tables that we will later combine
+finmer_top_genus_melted <- psmelt(top_genus_prune)
+finmer_other_genus_melted <- psmelt(other_genus_prune)
+
+# Combine and adjust data
+finmer_other_genus_melted$Genus_phylum <- "Other fungi" # All the genera that are in "other" phyloseq will be now renamed to "Other fungi"
+finmer_combined <- rbind(finmer_top_genus_melted, finmer_other_genus_melted)
+
+# finmer_combined now has the data you need for the plotting, but we will still group by columns that we need and calculate average relative abundance per group
+
+# Aggregate data for plotting
+colnames(finmer_combined)
+
+finmer_aggregate <- finmer_combined %>%
+  group_by(OTU, Sample, Genus, Genus_phylum, Phylum, Ecology_new, Soil.Horizon, Forest, locality_year) %>%
+  dplyr::summarise(Abundance = sum(Abundance), .groups = 'drop') %>%
+  group_by(Sample) %>%
+  mutate(Relative_abundance = Abundance / sum(Abundance)) %>%
+  ungroup()
+
+# Rename columns if needed
+# colnames(finmer_aggregate) <- c("Sample_name", "Site_ID", "Genus", "Genus_phylum", "Phylum", "Ecology", "Compartment", "Forest_management", "Abundance", "Relative_abundance")
+
+# Relevel factors - this way Other fungi always shows first with is nicer for the graph
+finmer_aggregate$Genus_phylum = relevel(factor(finmer_aggregate$Genus_phylum), "Other fungi") 
+
+# This code checks that your calculations are OK - everything should be summed up to 1 (this is same as 100%), each sample
+finmer_aggregate %>%
+  group_by(Sample) %>%
+  summarise(total = sum(Relative_abundance)) %>%
+  summary()
+
+# If you need to extract relative abundance values for whatever reason, this code can be used
+# 
+# relabund_wide <- finmer_aggregate %>%
+#   select(Genus_phylum, Compartment, Relative_abundance) %>%
+#   group_by(Compartment, Genus_phylum) %>%
+#   dplyr::summarise(Relative_abundance = sum(Relative_abundance)*100, .groups="drop") %>%
+#   pivot_wider(names_from = Genus_phylum, values_from = Relative_abundance, values_fill = 0)
+# 
+# relabund_percent_view <- relabund_wide %>%
+#   mutate(across(where(is.numeric), ~ formatC(.x * 100, format = "f", digits = 4)))
+# 
+# head(relabund_percent_view)
+
+# Plot relative abundance
+
+finmer_aggregate$Soil.Horizon <- factor (finmer_aggregate$Soil.Horizon, 
+                                                      levels = c("FH",
+                                                                 "D1",
+                                                                 "D2", "D3", "D4"))
+
+
+
+genus_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil.Horizon", "Relative_abundance", "Genus_phylum", "Relative Abundance by Genus", color_values_genus)
+
+genus_ecology_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil.Horizon", "Relative_abundance", "Genus_eco", "Relative Abundance by Genus", color_values_genus)
+unique(finmer_aggregate$Ecology_new)
+
+finmer_aggregate$Ecology_new <- factor (finmer_aggregate$Ecology_new, 
+                                                       levels = c("Unknown", "Others", "ErM", "EcM", "Plant pathogen", "Saprotroph (other)", "Saprotroph (litter)", "Saprotroph (soil)", "Saprotroph (wood)"))
+
+ecology_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil.Horizon", "Relative_abundance", "Ecology_new", "Relative Abundance by Guild", color_values_eco)
+
+print(genus_plot)
+print(ecology_plot)
+```
+##Stats for beta diversity
+```{r}
+# combining otu table and environmental data (good to combine to avoid mismatching), to be used for PERMANOVA
+# We need our hellinger transformed OTU table, and the metadata+diversity 
+
+
+all_permanova_fun <- left_join(rownames_to_column(otu_hell_fun, "Sample_ID"), 
+                          diversity, by = "Sample_ID")
+
+s.dis_fun <- vegan::vegdist(all_permanova_fun[, 2:(ncol(otutab_filtered_fun) + 1)]) # calculating Bray-Curtis dissimilarity (taking only OTU table from combined, 
+
+```
+###Beta Dispersion
+```{r}
+#SOIL HORIZONS#
+# Check beta dispersion of the data, if there is high variability within treatments
+
+beta_disp <- betadisper(s.dis_fun, all_permanova_fun$Soil_Horizon)
+plot(beta_disp)
+
+permutest(beta_disp, permutations = 999)
+
+anova (beta_disp)
+
+distances <- as.data.frame(beta_disp$distances)  # Convert distances to a data frame
+groups <- as.factor(beta_disp$group)  # Make sure groups are factors
+
+# Create a data frame for plotting
+data_for_plot <- data.frame(Distance = distances[,1], Group = groups)
+
+# Create the boxplot using ggplot2
+betadisp_SH<-ggplot(data_for_plot, aes(x = Group, y = Distance)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Beta Dispersion by Group",
+       x = "Group",
+       y = "Distance to Centroid") +
+  geom_jitter(width = 0.2, color = "blue", size = 1.5, alpha = 0.5)
+ggsave("betadisp_SH.png", width = 14, height = 8, units = "in")
+
+```
+###Permanova Models
+```{r}
+# testing the difference in compartments 
+
+adonis2(s.dis_fun~all_permanova_fun$Soil_Horizon, permutations = 999)
+adonis2(s.dis_fun~all_permanova_fun$Soil_Horizon + all_permanova_fun$Forest_Stand, permutations = 999)
+
+
+perform_pairwise_adonis <- function(otu_table, mapping, factor_name, sim_method = "bray", p_adjust_method = "bonferroni", table_title = NULL) {
+  # Replace dots with hyphens in row names
+  rownames(mapping) <- gsub("\\.", "-", rownames(mapping))
+  rownames(otu_table) <- gsub("\\.", "-", rownames(otu_table))
+  
+  # Combine OTU table and mapping table by ID
+  all_permanova <- left_join(rownames_to_column(otu_table, "ID"), 
+                             rownames_to_column(mapping, "ID"), by = "ID")
+  
+  # Ensure the factor column exists in the mapping table
+  if (!(factor_name %in% colnames(mapping))) {
+    stop(paste("Factor", factor_name, "not found in the metadata table."))
+  }
+  
+  # Run pairwise.adonis for the given factor
+  pairwise_results <- pairwiseAdonis::pairwise.adonis(
+    all_permanova[, 2:(ncol(otu_table) + 1)],  # OTU data part
+    all_permanova[[factor_name]],              # Factor column for grouping
+    sim.method = sim_method,                   # Dissimilarity method (e.g., "bray")
+    p.adjust.m = p_adjust_method               # P-value adjustment method
+  )
+  
+  # Print and return the results
+  print(pairwise_results)
+  
+  # Display the pairwise results in a table format using kable
+  pairwise_results_df <- as.data.frame(pairwise_results)
+  
+  # Use custom title if provided, otherwise default to factor name
+  caption_text <- ifelse(is.null(table_title), 
+                         paste("Pairwise Adonis Results for", factor_name), 
+                         table_title)
+  
+  # Format the table for HTML display in RMarkdown
+formatted_table <- pairwise_results_df %>%
+  knitr::kable(format = "html", caption = caption_text) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Print the table so it appears in the report
+print(formatted_table)
+
+invisible(list(data = pairwise_results_df, table = formatted_table))
+
+}
+
+pairwise_results_fun <- perform_pairwise_adonis(
+  otu_table = otu_hell_fun, 
+  mapping = metadata, 
+  factor_name = "Soil_Horizon",
+  table_title = "Fungi: Permanova results for level Soil_Horizon"
+)
+```
+
+#Olivia's Code
+##Trying betadsip and PERMANOVA for variables vs fungal communities
+```{r}
+#### PERMANOVA + PERMDISP ####
+
+library(vegan)
+
+# ----------------------------
+# 1. SPLIT DATA CORRECTLY
+# ----------------------------
+all_permanova_fun_1<- all_permanova_fun[, -1]  # Remove the first column (site column)
+
+# Community matrix (species / functional data)
+comm <- all_permanova_fun_1[1:12590]
+
+# Ensure numeric (VERY IMPORTANT)
+comm <- data.frame(lapply(comm, as.numeric))
+
+# ----------------------------
+# 2. METADATA (PREDICTORS)
+# ----------------------------
+
+meta <- data.frame(
+  Forest_Stand = all_permanova_fun[, 12595],
+  Soil_C = all_permanova_fun[, 12602],
+  SoilHorizon=all_permanova_fun[, 12599],
+  Plot_ID=all_permanova_fun[, 12596]
+  
+)
+
+# Convert grouping variables to factors if needed
+meta$Forest_Stand <- as.factor(meta$Forest_Stand)
+meta$Plot_ID <- as.factor(meta$Plot_ID)
+
+# ----------------------------
+# 3. BRAY-CURTIS DISTANCE MATRIX
+# ----------------------------
+
+comm_dist <- vegdist(comm, method = "bray")
+
+
+# ----------------------------
+# 4. PERMDISP (HOMOGENEITY OF DISPERSION)
+# ----------------------------
+
+betadisper_result <- betadisper(
+  comm_dist,
+  group = meta$Plot_ID
+)
+
+# Visual check
+plot(betadisper_result)
+boxplot(betadisper_result)
+
+# Test
+anova(betadisper_result)
+
+# Pairwise comparisons (optional)
+TukeyHSD(betadisper_result)
+plot(TukeyHSD(betadisper_result))
+
+
+# ----------------------------
+# 5. PERMANOVA
+# ----------------------------
+#Across plots, do soil carbon, soil horizon, and forest stand explain differences in fungal communities, while accounting for the fact that samples within each plot are repeated measurements
+comm_dist <- vegdist(comm, method = "bray")
+adonis2(comm_dist ~ Soil_C + SoilHorizon + Forest_Stand,
+        data = meta,
+        strata = meta$Plot_ID,
+        by = "terms")
+```
+##Trying NLME for richness against environmental factors 
+```{r}
+# ----------------------------
+# LOADING MY PACKAGES AND PLOTS
+# ----------------------------
+diversity #this is where all my data is
+diversity$Soil_Horizon <- factor(diversity$Soil_Horizon,
+                               levels = c("FH", "1", "2", "3", "4"))
+library(GGally)
+library(dplyr)
+library(ggplot2)
+library(nlme)
+library(car)
+
+# ----------------------------
+# CHECKING FOR CORRELATIONS 
+# ----------------------------
+ggpairsplot<- ggpairs(
+  diversity %>%
+    select(Soil_Horizon,
+           C_in_g_per_m_square,
+           N_in_g_per_m_square,
+           CN_ratio_g_per_m_square,
+           richness,
+           shannon,
+           evenness),
+  upper = list(continuous = wrap("cor", size = 3.5, stars = TRUE)),
+  method="pearson",
+  lower = list(continuous = wrap("points", alpha = 0.6, size = 1)),
+  diag  = list(continuous = "densityDiag")
+)
+ggsave("ggpairsplot.png", width = 14, height = 8, units = "in")
+#CORRELATIONS
+#*** 0.001 
+#** 0.01
+#* 0.05
+#. 0.10
+
+#carbon and nitrogen are highly correlated, so they can't be in the same model together. 
+
+#carbon and soil depth are also correlated (weak; but significant)
+#richness is correlated with carbon, nitrogen, CN ratio and soil depth
+#shannon is correlated with carbon and nitrogen, and soil depth
+#evenness is correlated with carbon nitrogen and soil depth
+
+# ----------------------------
+# CHECKING FOR NORMALITY OF DATASET
+# ----------------------------
+
+shapiro.test(diversity$richness) #while this is important, this can be validated later with qqplots of residuals of model
+#evenness: not normal
+#shannon: not normal
+#richness: 0.04513: cusp of normal/not normal
+
+# ----------------------------
+# OPTIONAL SCALING OF VARIABLES (?)
+# ----------------------------
+
+#diversity_scaled <- diversity %>%
+  #mutate(across(
+    #c(Soil_depth_horizon_in_cm,
+      #C_in_g_per_m_square,
+      #N_in_g_per_m_square,
+      #CN_ratio_g_per_m_square),
+    #scale
+ # ))
+
+# ----------------------------
+# How is soil carbon influenced by depth?
+# ----------------------------
+
+carbondepthmodel<-lme(C_in_g_per_m_square ~ Soil_Horizon, random=list(Plot_ID=~1), data = diversity)
+summary(carbondepthmodel)
+summary(carbondepthmodel)$tTable
+residuals<-residuals(carbondepthmodel)
+qqnorm(residuals)
+qqline(residuals,col="red") #normal residuals 
+library(performance)
+r2_nakagawa(carbondepthmodel) #reminder: conditional r squared is amount of explained variance for the entire model; marginal r squared: how much of this variance is attributed to the fixed effects alone
+Anova(carbondepthmodel)
+table(diversity$Soil_Horizon)
+levels(diversity$Soil_Horizon)
+
+#carbon peaks in specific non-FH horizons, but overall increases as we go down.
+
+# ----------------------------
+# How is soil nitrogen influenced by depth?
+# ----------------------------
+
+nitrogendepthmodel<-lme(N_in_g_per_m_square ~ Soil_Horizon, random=list(Plot_ID=~1), data = diversity)
+summary(nitrogendepthmodel)
+summary(nitrogendepthmodel)$tTable
+residuals<-residuals(nitrogendepthmodel)
+qqnorm(residuals)
+qqline(residuals,col="red") #normal residuals 
+library(performance)
+r2_nakagawa(nitrogendepthmodel) #reminder: conditional r squared is amount of explained variance for the entire model; marginal r squared: how much of this variance is attributed to the fixed effects alone
+Anova(nitrogendepthmodel)
+
+#soil nitrogen is significantly (kind of decreasing) with depth
+
+# ----------------------------
+# How is fungal richness influenced by soil depth?
+# ----------------------------
+
+crichnessmodel<-lme(richness ~ C_in_g_per_m_square +Soil_Horizon, random=list(Plot_ID=~1), data = diversity) 
+summary(crichnessmodel)
+summary(crichnessmodel)$tTable
+residuals<-residuals(crichnessmodel)
+qqnorm(residuals)
+qqline(residuals,col="red") #normal residuals
+# Histogram of residuals
+library(performance)
+r2_nakagawa(crichnessmodel)
+Anova(crichnessmodel)
+
+#Soil depth and carbon content represent largely independent environmental gradients (both significant negative effects) shaping fungal richness.
+
+#what about nitrogen?
+
+# ----------------------------
+# FH LAYER: how is fungal richness influenced by carbon?
+# ----------------------------
+
+FH_data <- subset(diversity, Soil_Horizon == "FH")
+
+FH_model <- lme(richness ~ C_in_g_per_m_square,
+                random=list(Plot_ID=~1),
+                data = FH_data)
+summary(FH_model)
+summary(FH_model)$tTable
+residuals<-residuals(FH_model)
+qqnorm(residuals)
+qqline(residuals,col="red") #normal residuals
+library(performance)
+r2_nakagawa(FH_model)
+Anova(FH_model) #carbon is a significant predictor (0.03)
+
+# ----------------------------
+# 1 LAYER: how is fungal richness influenced by carbon?
+# ----------------------------
+
+sub1_data <- subset(diversity, Soil_Horizon == "1")
+
+sub1_model <- lme(richness ~ C_in_g_per_m_square,
+                random=list(Plot_ID=~1),
+                data = sub1_data)
+summary(sub1_model)
+summary(sub1_model)$tTable
+residuals<-residuals(sub1_model)
+qqnorm(residuals)
+qqline(residuals,col="red") #normal (ish?) residuals
+library(performance)
+r2_nakagawa(sub1_model)
+Anova(sub1_model) #carbon is not really a significant predictor in this layer (0.059)
+
+# ----------------------------
+# 2 LAYER: how is fungal richness influenced by carbon?
+# ----------------------------
+
+sub2_data <- subset(diversity, Soil_Horizon == "2")
+
+sub2_model <- lme(richness ~ C_in_g_per_m_square,
+                random=list(Plot_ID=~1),
+                data = sub2_data)
+summary(sub2_model)
+summary(sub2_model)$tTable
+residuals<-residuals(sub2_model)
+qqnorm(residuals)
+qqline(residuals,col="red") #normal (ish?) residuals
+library(performance)
+r2_nakagawa(sub2_model)
+Anova(sub2_model) #carbon is not a significant predictor in this layer (0.82)
+
+
+# ----------------------------
+# 3 LAYER: how is fungal richness influenced by carbon?
+# ----------------------------
+
+sub3_data <- subset(diversity, Soil_Horizon == "3")
+
+sub3_model <- lme(richness ~ C_in_g_per_m_square,
+                random=list(Plot_ID=~1),
+                data = sub3_data)
+summary(sub3_model)
+summary(sub3_model)$tTable
+residuals<-residuals(sub3_model)
+qqnorm(residuals)
+qqline(residuals,col="red") #normal (ish?) residuals
+library(performance)
+r2_nakagawa(sub3_model)
+Anova(sub3_model) #carbon is not a significant predictor in this layer
+
+# ----------------------------
+# 4 LAYER: how is fungal richness influenced by carbon?
+# ----------------------------
+
+sub4_data <- subset(diversity, Soil_Horizon == "4")
+
+sub4_model <- lme(richness ~ C_in_g_per_m_square,
+                random=list(Plot_ID=~1),
+                data = sub4_data)
+summary(sub4_model)
+summary(sub4_model)$tTable
+residuals<-residuals(sub4_model)
+qqnorm(residuals)
+qqline(residuals,col="red") #normal (ish?) residuals
+library(performance)
+r2_nakagawa(sub4_model)
+Anova(sub4_model) #carbon is not a significant predictor in this layer
+
+#so, carbon is only a significant predictor of fungal species richness in the FH layer.
+
+```
+##Plotting things together
+```{r}
+
+library(sjPlot)
+library(ggplot2)
+library(dplyr)
+library(ggeffects)
+library(cowplot)
+
+# ---------------------------------------
+# Carbon by depth
+# ---------------------------------------
+plot_A <- predict_response(
+  carbondepthmodel,
+  terms = "Soil_Horizon",
+  ci_level = 0.95
+)
+
+plot_A <- ggplot(plot_A, aes(x = x, y = predicted)) +
+  geom_point(size = 4) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = 0.2) +
+  labs(x = "Soil horizon",
+       y = "Belowground carbon",
+       title = "Soil horizon effect on carbon") +
+  theme_bw()
+
+plot_A
+ggsave("plot_A.png", width = 14, height = 8, units = "in")
+
+
+# =========================================================
+# 1. CARBON EFFECT (continuous)
+# =========================================================
+
+plot_C <- predict_response(
+  crichnessmodel,
+  terms = "C_in_g_per_m_square",
+  ci_level = 0.95
+)
+
+plot_C <- ggplot(plot_C, aes(x = x, y = predicted)) +
+  geom_line(linewidth = 1.2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.25) +
+  labs(x = "Soil carbon",
+       y = "Predicted richness",
+       title = "Carbon effect") +
+  theme_bw()
+
+
+# =========================================================
+# 2. SOIL HORIZON EFFECT (categorical)
+# =========================================================
+
+plot_H <- predict_response(
+  crichnessmodel,
+  terms = "Soil_Horizon",
+  ci_level = 0.95
+)
+
+plot_H <- ggplot(plot_H, aes(x = x, y = predicted)) +
+  geom_point(size = 4) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high),
+                width = 0.2) +
+  labs(x = "Soil horizon",
+       y = "Predicted richness",
+       title = "Soil horizon effect") +
+  theme_bw()
+
+
+# =========================================================
+# 3. COMBINE PLOTS
+# =========================================================
+
+final_plot <- plot_grid(plot_C, plot_H, ncol = 2)
+
+final_plot
+
+
+ggsave("final_plot.png", width = 14, height = 8, units = "in")
+
+###PER LAYER###
+
+plot_FH <- predict_response(
+  FH_model,
+  terms = "C_in_g_per_m_square",
+  ci_level = 0.95
+)
+
+plot_FH <- ggplot(plot_FH, aes(x = x, y = predicted)) +
+  geom_line(linewidth = 1.2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.25) +
+  labs(x = "Soil carbon",
+       y = "Predicted richness",
+       title = "Carbon effect in FH layer") +
+  theme_bw()
+
+plot_1 <- predict_response(
+  sub1_model,
+  terms = "C_in_g_per_m_square",
+  ci_level = 0.95
+)
+
+plot_1 <- ggplot(plot_1, aes(x = x, y = predicted)) +
+  geom_line(linewidth = 1.2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.25) +
+  labs(x = "Soil carbon",
+       y = "Predicted richness",
+       title = "Carbon effect in 1 layer") +
+  theme_bw()
+
+plot_2 <- predict_response(
+  sub2_model,
+  terms = "C_in_g_per_m_square",
+  ci_level = 0.95
+)
+
+plot_2 <- ggplot(plot_2, aes(x = x, y = predicted)) +
+  geom_line(linewidth = 1.2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.25) +
+  labs(x = "Soil carbon",
+       y = "Predicted richness",
+       title = "Carbon effect in 2 layer") +
+  theme_bw()
+
+plot_3 <- predict_response(
+  sub3_model,
+  terms = "C_in_g_per_m_square",
+  ci_level = 0.95
+)
+
+plot_3 <- ggplot(plot_3, aes(x = x, y = predicted)) +
+  geom_line(linewidth = 1.2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.25) +
+  labs(x = "Soil carbon",
+       y = "Predicted richness",
+       title = "Carbon effect in 3 layer") +
+  theme_bw()
+
+plot_4 <- predict_response(
+  sub4_model,
+  terms = "C_in_g_per_m_square",
+  ci_level = 0.95
+)
+
+plot_4 <- ggplot(plot_4, aes(x = x, y = predicted)) +
+  geom_line(linewidth = 1.2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.25) +
+  labs(x = "Soil carbon",
+       y = "Predicted richness",
+       title = "Carbon effect in 4 layer") +
+  theme_bw()
+
+layerplots <- plot_grid(plot_FH, plot_1, plot_2, plot_3, plot_4, ncol = 5)
+
+layerplots
+ggsave("layerplots.png", width = 14, height = 8, units = "in")
+
+```
+
+
+
+
