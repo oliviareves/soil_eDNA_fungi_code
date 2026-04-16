@@ -17,9 +17,10 @@ The preview shows you a rendered HTML copy of the contents of the editor. Conseq
 
 #Installing Packages
 ```{r}
-install.packages("phyloseq")
+install.packages("BiocManager", repos = "https://cloud.r-project.org")
+BiocManager::install("phyloseq")
 library(dplyr)
-#library(phyloseq)
+library(phyloseq)
 library(vegan)
 library(ggplot2)
 library(data.table)
@@ -931,6 +932,12 @@ library(ggplot2)
 library(nlme)
 library(car)
 
+table(diversity$Soil_Horizon, diversity$Plot_ID)
+# or more simply:
+diversity %>%
+  group_by(Soil_Horizon) %>%
+  summarise(n_obs = n(), n_plots = n_distinct(Plot_ID))
+
 # ----------------------------
 # CHECKING FOR CORRELATIONS 
 # ----------------------------
@@ -943,8 +950,7 @@ ggpairsplot<- ggpairs(
            richness,
            shannon,
            evenness),
-  upper = list(continuous = wrap("cor", size = 3.5, stars = TRUE)),
-  method="pearson",
+  upper = list(continuous = wrap("cor", method= "pearson",size = 3.5, stars = TRUE)),
   lower = list(continuous = wrap("points", alpha = 0.6, size = 1)),
   diag  = list(continuous = "densityDiag")
 )
