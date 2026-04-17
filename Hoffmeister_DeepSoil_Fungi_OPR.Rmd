@@ -17,8 +17,8 @@ The preview shows you a rendered HTML copy of the contents of the editor. Conseq
 
 #Installing Packages
 ```{r}
-install.packages("BiocManager", repos = "https://cloud.r-project.org")
-BiocManager::install("phyloseq")
+#install.packages("BiocManager", repos = "https://cloud.r-project.org")
+#BiocManager::install("phyloseq")
 library(dplyr)
 library(phyloseq)
 library(vegan)
@@ -120,11 +120,11 @@ mytheme <-   theme(panel.grid.minor=element_blank(), #gets rid of grey and lines
 #Data Pre-Processing
 ##Loading in the data
 ```{r}
-metadata <- read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/2023_SlovakiaRomania_DeepSoileDNA_metadatacsv.csv", sep = ",", row.names = 1)
+metadata <- read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/metadata_files/2023_SlovakiaRomania_DeepSoileDNA_metadatacsv.csv", sep = ",", row.names = 1)
 
-taxonomy_data <- read.csv("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Fungi_BLAST_Table.csv", sep = ",", stringsAsFactors = FALSE, header = TRUE)
+taxonomy_data <- read.csv("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/metadata_files/Fungi_BLAST_Table.csv", sep = ",", stringsAsFactors = FALSE, header = TRUE)
 
-otutab_fun  <-  read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Fungi_OTU_Table.csv", sep = ",", row.names = 1)
+otutab_fun  <-  read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/metadata_files/Fungi_OTU_Table.csv", sep = ",", row.names = 1)
 ```
 ##Taxonomy Best hits for fungi
 ```{r}
@@ -197,7 +197,7 @@ unique(otutax_fun$FunctionalGuild1)
 
 #getting rid of unnecessary columns- not in tijana's code
 otutax_fun <- otutax_fun %>%
-  select(-X, -X.1, -no.hit)
+  select(-no.hit)
 
 #displaying all columns in new joined table
 colnames(otutax_fun)
@@ -248,7 +248,7 @@ head(otutax_filtered_fun$Genus_ecology)
 #split again into filtered otu and tax (to use in phyloseq) [, 2:(ncol(otu_table) + 1)]
 
 otutab_filtered_fun <- otutax_filtered_fun %>% 
-  select(1:161) %>% 
+  select(1:161) %>% #takes out counts column
   remove_rownames() %>% 
   column_to_rownames(var = "OTU_ID")
 
@@ -288,7 +288,7 @@ diversity <- print(list(rownames_to_column(metadata, "Sample_ID"),
                        rownames_to_column(evenness, "Sample_ID"))) %>%
   reduce(left_join, by = "Sample_ID")
 
-write.csv(diversity, file = "diversity.csv")
+write.csv(diversity, "C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/metadata_files/diversity.csv")
 
 #the low diversity associated with HOF120 corresponds to the incredibly low read count (4)- check notepad file 
 
@@ -371,7 +371,8 @@ annotated_fun_div <- annotate_figure(arranged_fun_div,
 
 # Plot combined and annotated graph
 plot(annotated_fun_div)
-ggsave("annotated_fun_div.png", width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/annotated_fun_div.png",plot=annotated_fun_div,width = 14, height = 8, units = "in")
+
 ```
 #Stats for Alpha Diversity
 ##ANOVA
@@ -531,7 +532,7 @@ NMDS_plot <- ggplot(final_NMDS,
 
 NMDS_plot
 
-ggsave("NMDS_plot_only.png", width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/NMDS_plot_only.png",plot=NMDS_plot,width = 14, height = 8, units = "in")
 ```
 ###Plotting NMDS for soil horizon vs forest stand with environmental arrows
 ```{r}
@@ -608,7 +609,8 @@ NMDS_plot_envfit <- ggplot(final_NMDS,
 
 NMDS_plot_envfit
 
-ggsave("NMDS_plot_envfit.png", width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/NMDS_plot_envfit.png",plot=NMDS_plot_envfit,width = 14, height = 8, units = "in")
+
 #so, perhaps C drives fungal communities? Let's see
 data.envfit.nmds$vectors$pvals
 
@@ -644,7 +646,7 @@ generate_relative_abundance_plot <- function(data, x_var, y_var, fill_var, title
     scale_fill_manual(values = color_values) +
     labs(x = "", y = "Relative abundance", title = title) +
     guides(fill = guide_legend(ncol = 1)) +
-    facet_grid(~locality_year+Forest, drop = TRUE, scales = "free", space = "free", labeller = label_wrap_gen(width = 15))
+    facet_grid(~Country+Forest_Stand, drop = TRUE, scales = "free", space = "free", labeller = label_wrap_gen(width = 15))
 }
 
 # Create phyloseq object
@@ -660,12 +662,15 @@ finmer
 # Calculate relative abundance (function we made)
 finmer_relabund <- transform_sample_counts(finmer, function(x) { x / sum(x) })
 
-# Melt the data - this transforms the phyloseq grande table to R data frame (a big, long table with all information that we need)
-# finmer_melt <- psmelt(finmer_relabund)
+#Melt the data - this transforms the phyloseq grande table to R data frame (a big, long table with all information that we need)
+finmer_melt <- psmelt(finmer_relabund)
 
 # Calculate total sums for genus (sum of raw sequence reads, to see which taxa are most abundant accross the dataset), we combine all OTUs of the same Genus
 
 finmer_sum <- tapply(taxa_sums(finmer), tax_table(finmer)[, "Genus"], sum, na.rm = TRUE)
+
+finmer_sum
+
 # Look at the finmer_sum under Values in the Environment, you will see that there is 1239 genera in total, we will select 20 most abundant ones to plot, and put the rest into "Others"; 1239 is impossible to visualise and also not very informative
 
 # Select top genera
@@ -691,7 +696,7 @@ finmer_combined <- rbind(finmer_top_genus_melted, finmer_other_genus_melted)
 colnames(finmer_combined)
 
 finmer_aggregate <- finmer_combined %>%
-  group_by(OTU, Sample, Genus, Genus_phylum, Phylum, Ecology_new, Soil.Horizon, Forest, locality_year) %>%
+  group_by(OTU, Sample, Genus, Genus_phylum, Phylum, Ecology_new, Soil_Horizon, Forest_Stand, Country) %>%
   dplyr::summarise(Abundance = sum(Abundance), .groups = 'drop') %>%
   group_by(Sample) %>%
   mutate(Relative_abundance = Abundance / sum(Abundance)) %>%
@@ -724,25 +729,28 @@ finmer_aggregate %>%
 
 # Plot relative abundance
 
-finmer_aggregate$Soil.Horizon <- factor (finmer_aggregate$Soil.Horizon, 
+finmer_aggregate$Soil_Horizon <- factor (finmer_aggregate$Soil_Horizon, 
                                                       levels = c("FH",
-                                                                 "D1",
-                                                                 "D2", "D3", "D4"))
+                                                                 "1",
+                                                                 "2", "3", "4"))
 
 
 
-genus_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil.Horizon", "Relative_abundance", "Genus_phylum", "Relative Abundance by Genus", color_values_genus)
+genus_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil_Horizon", "Relative_abundance", "Genus_phylum", "Relative Abundance by Genus", color_values_genus)
 
-genus_ecology_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil.Horizon", "Relative_abundance", "Genus_eco", "Relative Abundance by Genus", color_values_genus)
+genus_ecology_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil_Horizon", "Relative_abundance", "Genus_eco", "Relative Abundance by Genus", color_values_genus)
 unique(finmer_aggregate$Ecology_new)
 
 finmer_aggregate$Ecology_new <- factor (finmer_aggregate$Ecology_new, 
                                                        levels = c("Unknown", "Others", "ErM", "EcM", "Plant pathogen", "Saprotroph (other)", "Saprotroph (litter)", "Saprotroph (soil)", "Saprotroph (wood)"))
 
-ecology_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil.Horizon", "Relative_abundance", "Ecology_new", "Relative Abundance by Guild", color_values_eco)
+ecology_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil_Horizon", "Relative_abundance", "Ecology_new", "Relative Abundance by Guild", color_values_eco)
 
 print(genus_plot)
 print(ecology_plot)
+
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/genus_plot.png",plot=genus_plot,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/ecology_plot.png",plot=ecology_plot,width = 14, height = 8, units = "in")
 ```
 ##Stats for beta diversity
 ```{r}
@@ -782,12 +790,14 @@ betadisp_SH<-ggplot(data_for_plot, aes(x = Group, y = Distance)) +
        x = "Group",
        y = "Distance to Centroid") +
   geom_jitter(width = 0.2, color = "blue", size = 1.5, alpha = 0.5)
-ggsave("betadisp_SH.png", width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadisp_SH.png",plot=betadisp_SH,width = 14, height = 8, units = "in")
+#make sure to also export the photo of the beta_disp (won't work with ggsave)
 
 ```
 ###Permanova Models
 ```{r}
 # testing the difference in compartments 
+#****THIS IS NOT WORKING###
 
 adonis2(s.dis_fun~all_permanova_fun$Soil_Horizon, permutations = 999)
 adonis2(s.dis_fun~all_permanova_fun$Soil_Horizon + all_permanova_fun$Forest_Stand, permutations = 999)
@@ -954,7 +964,7 @@ ggpairsplot<- ggpairs(
   lower = list(continuous = wrap("points", alpha = 0.6, size = 1)),
   diag  = list(continuous = "densityDiag")
 )
-ggsave("ggpairsplot.png", width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/ggpairsplot.png",plot=ggpairsplot,width = 14, height = 8, units = "in")
 #CORRELATIONS
 #*** 0.001 
 #** 0.01
@@ -975,7 +985,7 @@ ggsave("ggpairsplot.png", width = 14, height = 8, units = "in")
 shapiro.test(diversity$richness) #while this is important, this can be validated later with qqplots of residuals of model
 #evenness: not normal
 #shannon: not normal
-#richness: 0.04513: cusp of normal/not normal
+#richness: 0.02: not normal
 
 # ----------------------------
 # OPTIONAL SCALING OF VARIABLES (?)
@@ -1009,7 +1019,7 @@ levels(diversity$Soil_Horizon)
 #carbon peaks in specific non-FH horizons, but overall increases as we go down.
 
 # ----------------------------
-# How is soil nitrogen influenced by depth?
+# How is soil nitrogen influenced by depth? *WIP
 # ----------------------------
 
 nitrogendepthmodel<-lme(N_in_g_per_m_square ~ Soil_Horizon, random=list(Plot_ID=~1), data = diversity)
@@ -1021,8 +1031,6 @@ qqline(residuals,col="red") #normal residuals
 library(performance)
 r2_nakagawa(nitrogendepthmodel) #reminder: conditional r squared is amount of explained variance for the entire model; marginal r squared: how much of this variance is attributed to the fixed effects alone
 Anova(nitrogendepthmodel)
-
-#soil nitrogen is significantly (kind of decreasing) with depth
 
 # ----------------------------
 # How is fungal richness influenced by soil depth?
@@ -1042,6 +1050,20 @@ Anova(crichnessmodel)
 #Soil depth and carbon content represent largely independent environmental gradients (both significant negative effects) shaping fungal richness.
 
 #what about nitrogen?
+Nrichnessmodel<-lme(richness ~ N_in_g_per_m_square +Soil_Horizon, random=list(Plot_ID=~1), data = diversity) 
+summary(Nrichnessmodel)
+summary(Nrichnessmodel)$tTable
+residuals<-residuals(Nrichnessmodel)
+qqnorm(residuals)
+qqline(residuals,col="red") #normal residuals
+# Histogram of residuals
+library(performance)
+r2_nakagawa(Nrichnessmodel)
+Anova(Nrichnessmodel)
+```
+```{r}
+#PER SOIL HORIZON LAYER *WIP
+#BEFORE RUNNING THESE NEXT MODELS: might think about log transforming the species richness- the qqplots for some of them are a bit concerning. 
 
 # ----------------------------
 # FH LAYER: how is fungal richness influenced by carbon?
@@ -1092,7 +1114,7 @@ summary(sub2_model)
 summary(sub2_model)$tTable
 residuals<-residuals(sub2_model)
 qqnorm(residuals)
-qqline(residuals,col="red") #normal (ish?) residuals
+qqline(residuals,col="red") #normal (ish?) residuals- maybe we should log transform these 
 library(performance)
 r2_nakagawa(sub2_model)
 Anova(sub2_model) #carbon is not a significant predictor in this layer (0.82)
@@ -1137,6 +1159,7 @@ Anova(sub4_model) #carbon is not a significant predictor in this layer
 #so, carbon is only a significant predictor of fungal species richness in the FH layer.
 
 ```
+
 ##Plotting things together
 ```{r}
 
@@ -1165,7 +1188,11 @@ plot_A <- ggplot(plot_A, aes(x = x, y = predicted)) +
   theme_bw()
 
 plot_A
-ggsave("plot_A.png", width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/plot_A.png",plot=plot_A,width = 14, height = 8, units = "in")
+
+# ---------------------------------------
+# nitrogen by depth *WIP
+# ---------------------------------------
 
 
 # =========================================================
@@ -1187,13 +1214,39 @@ plot_C <- ggplot(plot_C, aes(x = x, y = predicted)) +
        title = "Carbon effect") +
   theme_bw()
 
+# =========================================================
+# 2. NITROGEN EFFECT (continuous)
+# =========================================================
+
+plot_N <- predict_response(
+  Nrichnessmodel,
+  terms = "N_in_g_per_m_square",
+  ci_level = 0.95
+)
+
+plot_N <- ggplot(plot_N, aes(x = x, y = predicted)) +
+  geom_line(linewidth = 1.2) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.25) +
+  labs(x = "Soil nitrogen",
+       y = "Predicted richness",
+       title = "Nitrogen effect") +
+  theme_bw()
+
+N_C_richness_plot <- plot_grid(plot_C, plot_N, ncol = 2)
+
+N_C_richness_plot
+
+
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/N_C_richness_plot.png",plot=N_C_richness_plot,width = 14, height = 8, units = "in")
+
 
 # =========================================================
-# 2. SOIL HORIZON EFFECT (categorical)
+# 3. SOIL HORIZON EFFECT (categorical) *WIP
 # =========================================================
 
 plot_H <- predict_response(
-  crichnessmodel,
+  crichnessmodel, #this is in C model
   terms = "Soil_Horizon",
   ci_level = 0.95
 )
@@ -1207,17 +1260,7 @@ plot_H <- ggplot(plot_H, aes(x = x, y = predicted)) +
        title = "Soil horizon effect") +
   theme_bw()
 
-
-# =========================================================
-# 3. COMBINE PLOTS
-# =========================================================
-
-final_plot <- plot_grid(plot_C, plot_H, ncol = 2)
-
-final_plot
-
-
-ggsave("final_plot.png", width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/plot_H.png",plot=plot_H,width = 14, height = 8, units = "in")
 
 ###PER LAYER###
 
@@ -1299,7 +1342,7 @@ plot_4 <- ggplot(plot_4, aes(x = x, y = predicted)) +
 layerplots <- plot_grid(plot_FH, plot_1, plot_2, plot_3, plot_4, ncol = 5)
 
 layerplots
-ggsave("layerplots.png", width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/layerplots.png",plot=layerplots,width = 14, height = 8, units = "in")
 
 ```
 
