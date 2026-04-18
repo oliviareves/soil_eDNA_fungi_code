@@ -15,11 +15,28 @@ When you save the notebook, an HTML file containing the code and output will be 
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
 
+#questions/things to do 
+```{r}
+#WIP STUFF: 
+#per layer models- log transform species richness? 
+#plotting nitrogen by depth?
+#plotting soil horizon?
+#overall checking coefficients, significance values (e.g. anova)
+#maybe making a plan for jenyk, asking him some questions 
+
+#do covariates need to be centered and scaled before model fitting?
+
+```
+
+
 #Installing Packages
 ```{r}
 #install.packages("BiocManager", repos = "https://cloud.r-project.org")
 #BiocManager::install("phyloseq")
+#install.packages("C:/Users/reves/Downloads/pairwiseAdonis-master/pairwiseAdonis-master/pairwiseAdonis", repos = NULL, type = "source")
 library(dplyr)
+library(devtools)
+library(BiocManager)
 library(phyloseq)
 library(vegan)
 library(ggplot2)
@@ -36,7 +53,7 @@ library(tidyverse)
 library(plyr)
 library(ggh4x)
 library(indicspecies)
-#library(pairwiseAdonis)
+library(pairwiseAdonis)
 #library(broom)
 library(kableExtra)
 library(agricolae)
@@ -377,15 +394,18 @@ ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/202
 #Stats for Alpha Diversity
 ##ANOVA
 ```{r}
+#NOTE: I did more in depth stuff with my nlme models below
 # Here is the base code of using ANOVA (aov funcion) in vegan package 
 
 # Is richness significantly different between roots, soil, and litter?
 
 summary(aov(richness ~ Soil_Horizon, data = diversity))
+# yes
 
 # How about forest management?
 
 summary(aov(richness ~ Forest_Stand, data = diversity))
+# no
 
 # Here is the code to make a function that does anova automatically for selected list of predictors, and then run it for richness, shannon, evenness
 
@@ -797,7 +817,7 @@ ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/202
 ###Permanova Models
 ```{r}
 # testing the difference in compartments 
-#****THIS IS NOT WORKING###
+#THIS WORKS NOW
 
 adonis2(s.dis_fun~all_permanova_fun$Soil_Horizon, permutations = 999)
 adonis2(s.dis_fun~all_permanova_fun$Soil_Horizon + all_permanova_fun$Forest_Stand, permutations = 999)
@@ -860,6 +880,7 @@ pairwise_results_fun <- perform_pairwise_adonis(
 ##Trying betadsip and PERMANOVA for variables vs fungal communities
 ```{r}
 #### PERMANOVA + PERMDISP ####
+#either use this, or tijana's code 
 
 library(vegan)
 
@@ -936,6 +957,8 @@ adonis2(comm_dist ~ Soil_C + SoilHorizon + Forest_Stand,
 diversity #this is where all my data is
 diversity$Soil_Horizon <- factor(diversity$Soil_Horizon,
                                levels = c("FH", "1", "2", "3", "4"))
+diversity$Plot_ID <- as.factor(diversity$Plot_ID)
+
 library(GGally)
 library(dplyr)
 library(ggplot2)
@@ -1009,31 +1032,34 @@ summary(carbondepthmodel)
 summary(carbondepthmodel)$tTable
 residuals<-residuals(carbondepthmodel)
 qqnorm(residuals)
-qqline(residuals,col="red") #normal residuals 
-library(performance)
-r2_nakagawa(carbondepthmodel) #reminder: conditional r squared is amount of explained variance for the entire model; marginal r squared: how much of this variance is attributed to the fixed effects alone
+qqline(residuals,col="red") #are these normal residuals 
 Anova(carbondepthmodel)
+
+#RESULTS
+#carbon peaks in specific non-FH horizons, but overall increases as we go down- this aligns with Laxmi's paper. 
+#carbon is lowest in the FH layer- look at the "value" in the summary table
+#Soil horizon is an extremely significant predictor of carbon overall (p<0.001)
+
+# ----------------------------
+# How is soil nitrogen influenced by depth? 
+# ----------------------------
+#make sure soil horizon is still a factor, here's how to check:
 table(diversity$Soil_Horizon)
 levels(diversity$Soil_Horizon)
-
-#carbon peaks in specific non-FH horizons, but overall increases as we go down.
-
-# ----------------------------
-# How is soil nitrogen influenced by depth? *WIP
-# ----------------------------
 
 nitrogendepthmodel<-lme(N_in_g_per_m_square ~ Soil_Horizon, random=list(Plot_ID=~1), data = diversity)
 summary(nitrogendepthmodel)
 summary(nitrogendepthmodel)$tTable
 residuals<-residuals(nitrogendepthmodel)
 qqnorm(residuals)
-qqline(residuals,col="red") #normal residuals 
-library(performance)
-r2_nakagawa(nitrogendepthmodel) #reminder: conditional r squared is amount of explained variance for the entire model; marginal r squared: how much of this variance is attributed to the fixed effects alone
+qqline(residuals,col="red") #are these normal residuals?
 Anova(nitrogendepthmodel)
 
+#RESULTS
+#these are essentially the results of laxmi's paper
+
 # ----------------------------
-# How is fungal richness influenced by soil depth?
+# How is fungal richness influenced by soil depth and carbon?
 # ----------------------------
 
 crichnessmodel<-lme(richness ~ C_in_g_per_m_square +Soil_Horizon, random=list(Plot_ID=~1), data = diversity) 
@@ -1043,13 +1069,14 @@ residuals<-residuals(crichnessmodel)
 qqnorm(residuals)
 qqline(residuals,col="red") #normal residuals
 # Histogram of residuals
-library(performance)
-r2_nakagawa(crichnessmodel)
 Anova(crichnessmodel)
 
-#Soil depth and carbon content represent largely independent environmental gradients (both significant negative effects) shaping fungal richness.
+#RESULTS
+#after accounting for soil horizon, carbon is not a significant predictor or richness. soil horizon is significantly decreasing fungal richness as you go deeper in the profile. 
 
-#what about nitrogen?
+# ----------------------------
+# How is fungal richness influenced by soil depth and nitrogen?
+# ----------------------------
 Nrichnessmodel<-lme(richness ~ N_in_g_per_m_square +Soil_Horizon, random=list(Plot_ID=~1), data = diversity) 
 summary(Nrichnessmodel)
 summary(Nrichnessmodel)$tTable
@@ -1057,9 +1084,19 @@ residuals<-residuals(Nrichnessmodel)
 qqnorm(residuals)
 qqline(residuals,col="red") #normal residuals
 # Histogram of residuals
-library(performance)
-r2_nakagawa(Nrichnessmodel)
 Anova(Nrichnessmodel)
+#RESULTS
+#after accounting for soil horizon, nitrogen is not a significant predictor or richness. soil horizon is significantly decreasing fungal richness as you go deeper in the profile. 
+
+
+#checking r2 at the end because theres issues with the mumin package 
+#reminder: conditional r squared is amount of explained variance for the entire model; marginal r squared: how much of this variance is attributed to the fixed effects alone
+library(MuMIn)
+r.squaredGLMM(carbondepthmodel) 
+r.squaredGLMM(nitrogendepthmodel) 
+r.squaredGLMM(crichnessmodel) 
+r.squaredGLMM(Nrichnessmodel) 
+
 ```
 ```{r}
 #PER SOIL HORIZON LAYER *WIP
@@ -1079,9 +1116,8 @@ summary(FH_model)$tTable
 residuals<-residuals(FH_model)
 qqnorm(residuals)
 qqline(residuals,col="red") #normal residuals
-library(performance)
-r2_nakagawa(FH_model)
-Anova(FH_model) #carbon is a significant predictor (0.03)
+r.squaredGLMM(FH_model) 
+Anova(FH_model) #carbon is a significant predictor (0.03)- this is interesting because it's the only layer where it is
 
 # ----------------------------
 # 1 LAYER: how is fungal richness influenced by carbon?
