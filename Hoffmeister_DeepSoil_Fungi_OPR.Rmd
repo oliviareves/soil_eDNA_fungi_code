@@ -338,7 +338,8 @@ diversity_summary
 ```
 ##Plotting Alpha Diversity- tijana
 ```{r}
-# Create ymin and ymax columns for richness, shannon, and evennes
+# Tijana's code 
+#Create ymin and ymax columns for richness, shannon, and evennes
 
 diversity_summary <- diversity_summary %>%
   mutate(ymin_richness = mean_richness - sd_richness,
@@ -384,6 +385,8 @@ plot_richness <- generate_diversity_plot(diversity_summary, "mean_richness", "Me
 plot_shannon <- generate_diversity_plot(diversity_summary, "mean_shannon", "Mean Shannon", "ymin_shannon", "ymax_shannon", "Soil_Horizon", color_palette5)
 plot_evenness <- generate_diversity_plot(diversity_summary, "mean_evenness", "Mean Evenness", "ymin_evenness", "ymax_evenness", "Soil_Horizon", color_palette5)
 
+plot_richness
+
 # Combine three graphs into one with ggarrange
 
 arranged_fun_div <- ggarrange(plot_richness, plot_shannon, plot_evenness, nrow = 1, common.legend = TRUE)
@@ -397,6 +400,76 @@ annotated_fun_div <- annotate_figure(arranged_fun_div,
 # Plot combined and annotated graph
 plot(annotated_fun_div)
 ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/alphadiversity_tijana/annotated_fun_div.png",plot=annotated_fun_div,width = 14, height = 8, units = "in")
+
+#Olivia's code 
+# Create a new factor variable for the boxplot version
+diversity$Soil_Horizon <- factor(
+  diversity$Soil_Horizon,
+  levels = c("FH", "1", "2", "3", "4")
+)
+
+# Function for horizon-level boxplots
+generate_horizon_boxplot <- function(data, y_var, y_label, color_palette) {
+  ggplot(data, aes(x = Soil_Horizon, y = !!sym(y_var), fill = Soil_Horizon)) +
+    geom_boxplot(color = "black") +
+    scale_fill_manual(values = color_palette) +
+    theme_classic() +
+    theme(
+      axis.title.x = element_text(size = 15, face = "bold"),
+      axis.text.x = element_text(size = 15, face = "bold"),
+      axis.title.y = element_text(size = 15, face = "bold"),
+      axis.text.y = element_text(size = 15, face = "bold"),
+      legend.position = "none"
+    ) +
+    labs(y = y_label)
+}
+
+# Create new boxplot objects
+boxplot_richness_horizon <- generate_horizon_boxplot(
+  diversity,
+  "richness",
+  "Richness",
+  color_palette5
+)
+
+boxplot_shannon_horizon <- generate_horizon_boxplot(
+  diversity,
+  "shannon",
+  "Shannon Diversity",
+  color_palette5
+)
+
+boxplot_evenness_horizon <- generate_horizon_boxplot(
+  diversity,
+  "evenness",
+  "Evenness",
+  color_palette5
+)
+
+# Combine the new plots
+combined_horizon_boxplots <- ggarrange(
+  boxplot_richness_horizon,
+  boxplot_shannon_horizon,
+  boxplot_evenness_horizon,
+  nrow = 1
+)
+
+# Add a title
+annotated_horizon_boxplots <- annotate_figure(
+  combined_horizon_boxplots,
+  top = text_grob(
+    "Alpha diversity by soil horizon",
+    color = "black",
+    size = 14,
+    face = "bold"
+  )
+)
+
+boxplot_richness_horizon
+
+# Display
+plot(annotated_horizon_boxplots)
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/boxplot_richness_horizon.png",plot=boxplot_richness_horizon,width = 14, height = 8, units = "in")
 
 ```
 ##Stats for Alpha Diversity- tijana
@@ -417,9 +490,13 @@ summary(aov(richness ~ Soil_Horizon, data = diversity))
 summary(aov(richness ~ Forest_Stand, data = diversity))
 # no
 
+#how about country?
+summary(aov(richness ~ Country, data = diversity))
+# no
+
 # Here is the code to make a function that does anova automatically for selected list of predictors, and then run it for richness, shannon, evenness
 
-# Perform ANOVA
+# Perform ANOVA (from raw data)
 perform_anova <- function(response, predictor, data) {
   aov_result <- aov(reformulate(predictor, response), data = data)
   summary_df <- broom::tidy(aov_result)
@@ -447,7 +524,7 @@ anova_results %>%
 
 ##Tukey's test- tijana 
 ```{r}
-# Function to perform Tukey's HSD test and extract results
+# Function to perform Tukey's HSD test (from raw data) and extract results
 perform_tukey <- function(response, predictor, data) {
   model <- aov(reformulate(predictor, response), data = data)
   tukey <- HSD.test(model, predictor, group = TRUE)
@@ -1743,6 +1820,72 @@ print(ecology_plot)
 
 ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/relativeabundance/genus_plot.png",plot=genus_plot,width = 14, height = 8, units = "in")
 ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/relativeabundance/ecology_plot.png",plot=ecology_plot,width = 14, height = 8, units = "in")
+```
+
+```{r}
+# ----------------------------
+# RELATIVE ABUNDANCE - TOP 5 PER TAXONOMIC RANK
+# ----------------------------
+
+library(phyloseq)
+library(ggplot2)
+library(dplyr)
+library(cowplot)
+
+# ----------------------------
+# 1. CREATE PHYLOSEQ OBJECT (if not already done)
+# ----------------------------
+otu_fin2 <- otu_table(otutab_filtered_fun, taxa_are_rows = TRUE)
+tax_fin2 <- tax_table(as.matrix(tax_filtered_fun))
+mapping_fin2 <- sample_data(metadata)
+
+finmer2 <- phyloseq(otu_fin2, tax_fin2, mapping_fin2)
+
+# calculate relative abundance
+finmer2_relabund <- transform_sample_counts(finmer2, function(x) { x / sum(x) })
+
+# number of samples
+n_samples <- nsamples(finmer2)
+
+# ----------------------------
+# 2. DEFINE RANKS
+# adjust to match your colnames(tax_table(finmer2)) exactly
+# ----------------------------
+tax_ranks <- c("Phylum", "Class", "Order", "Family", "Genus","Species")
+
+# ----------------------------
+# 3. LOOP AND PRINT TOP 5 PER RANK
+# ----------------------------
+top5_results <- list()  # stores results if you want to access them later
+
+for (tax_rank in tax_ranks) {
+  
+  rank_sums_rel <- tapply(taxa_sums(finmer2_relabund),
+                          tax_table(finmer2_relabund)[, tax_rank],
+                          sum, na.rm = TRUE)
+  
+  top5_rel <- data.frame(
+    Rank                    = tax_rank,
+    Taxa                    = names(sort(rank_sums_rel, decreasing = TRUE)[1:5]),
+    Mean_relative_abundance = round(sort(rank_sums_rel, decreasing = TRUE)[1:5] / n_samples, 4),
+    Percentage              = paste0(round(sort(rank_sums_rel, decreasing = TRUE)[1:5] / n_samples * 100, 2), "%"),
+    row.names               = NULL
+  )
+  
+  top5_results[[tax_rank]] <- top5_rel
+  
+  cat("\n--- Top 5", tax_rank, "---\n")
+  print(top5_rel)
+}
+
+# ----------------------------
+# 4. OPTIONAL: SAVE AS CSV
+# ----------------------------
+all_ranks_combined <- do.call(rbind, top5_results)
+
+write.csv(all_ranks_combined, 
+          "top5_relative_abundance_by_rank.csv", 
+          row.names = FALSE)
 ```
 
 
