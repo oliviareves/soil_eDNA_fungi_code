@@ -501,6 +501,9 @@ diversity$Soil_Horizon <- factor(diversity$Soil_Horizon,
                                levels = c("FH", "1", "2", "3", "4"))
 diversity$Plot_ID <- as.factor(diversity$Plot_ID)
 
+range(diversity$richness)
+hist(diversity$richness)
+
 library(GGally)
 library(dplyr)
 library(ggplot2)
@@ -615,7 +618,8 @@ summary(crichnessmodel)
 summary(crichnessmodel)$tTable
 residuals<-residuals(crichnessmodel)
 qqnorm(residuals)
-qqline(residuals,col="red") #normal residuals
+qqline(residuals,col="red") 
+shapiro.test(residuals) #shapiro says not normal
 # Histogram of residuals
 Anova(crichnessmodel) #get p values and chi square from here
 
@@ -652,8 +656,10 @@ summary(Nrichnessmodel)$tTable
 residuals<-residuals(Nrichnessmodel)
 qqnorm(residuals)
 qqline(residuals,col="red") #normal residuals
+shapiro.test(residuals) #shapiro says not normal
 # Histogram of residuals
 Anova(Nrichnessmodel)
+
 #RESULTS
 #after accounting for soil horizon, nitrogen is not a significant predictor or richness. soil horizon is significantly decreasing fungal richness as you go deeper in the profile. 
 
