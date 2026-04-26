@@ -1824,7 +1824,7 @@ ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/202
 
 ```{r}
 # ----------------------------
-# RELATIVE ABUNDANCE - TOP 5 PER TAXONOMIC RANK
+# RELATIVE ABUNDANCE - TOP 5 PER TAXONOMIC RANK- WIP
 # ----------------------------
 
 library(phyloseq)
@@ -1878,14 +1878,94 @@ for (tax_rank in tax_ranks) {
   print(top5_rel)
 }
 
+#ALTERNATIVE METHOD
 # ----------------------------
-# 4. OPTIONAL: SAVE AS CSV
+# TOP 5 PER TAXONOMIC RANK BY SOIL HORIZON (INDEPENDENT PER HORIZON)
 # ----------------------------
-all_ranks_combined <- do.call(rbind, top5_results)
 
-write.csv(all_ranks_combined, 
-          "top5_relative_abundance_by_rank.csv", 
+library(phyloseq)
+library(dplyr)
+
+# ----------------------------
+# 1. CREATE PHYLOSEQ OBJECT
+# ----------------------------
+otu_fin2 <- otu_table(otutab_filtered_fun, taxa_are_rows = TRUE)
+tax_fin2 <- tax_table(as.matrix(tax_filtered_fun))
+mapping_fin2 <- sample_data(metadata)
+
+finmer2 <- phyloseq(otu_fin2, tax_fin2, mapping_fin2)
+finmer2
+
+# calculate relative abundance
+finmer2_relabund <- transform_sample_counts(finmer2, function(x) { x / sum(x) })
+
+# ----------------------------
+# 2. MELT PHYLOSEQ TO DATAFRAME
+# ----------------------------
+finmer2_melt <- psmelt(finmer2_relabund)
+
+# make sure Soil_Horizon is factored correctly
+finmer2_melt$Soil_Horizon <- factor(finmer2_melt$Soil_Horizon,
+                                     levels = c("FH", "1", "2", "3", "4"))
+
+# also trim whitespace just in case
+finmer2_melt$Soil_Horizon <- trimws(finmer2_melt$Soil_Horizon)
+finmer2_melt$Soil_Horizon <- factor(finmer2_melt$Soil_Horizon,
+                                     levels = c("FH", "1", "2", "3", "4"))
+
+# ----------------------------
+# 3. DEFINE RANKS
+# adjust to match your colnames(tax_table(finmer2)) exactly
+# ----------------------------
+tax_ranks <- c("Phylum", "Class", "Order", "Family", "Genus")
+
+# double check column names match:
+colnames(tax_table(finmer2))
+
+# ----------------------------
+# 4. LOOP THROUGH EACH RANK
+# ----------------------------
+top5_horizon_independent <- list()
+
+for (tax_rank in tax_ranks) {
+  
+  # aggregate mean relative abundance per horizon per taxon
+  horizon_sums <- finmer2_melt %>%
+    group_by(Soil_Horizon, .data[[tax_rank]]) %>%
+    dplyr::summarise(
+      Mean_relative_abundance = round(mean(Abundance), 4),
+      Percentage = paste0(round(mean(Abundance) * 100, 2), "%"),
+      .groups = "drop"
+    )
+  
+  # rename the tax_rank column to "Taxa" — base R approach, works in all dplyr versions
+  colnames(horizon_sums)[colnames(horizon_sums) == tax_rank] <- "Taxa"
+  
+  # select top 5 WITHIN each horizon independently
+  top5_per_horizon <- horizon_sums %>%
+    group_by(Soil_Horizon) %>%
+    slice_max(order_by = Mean_relative_abundance, n = 5) %>%
+    mutate(Rank = tax_rank,
+           Horizon_Rank = row_number()) %>%
+    ungroup() %>%
+    arrange(Soil_Horizon, desc(Mean_relative_abundance))
+  
+  top5_horizon_independent[[tax_rank]] <- top5_per_horizon
+  
+  cat("\n--- Top 5", tax_rank, "per Soil Horizon (independent) ---\n")
+  print(top5_per_horizon)
+}
+
+# ----------------------------
+# 5. COMBINE AND SAVE AS CSV
+# ----------------------------
+all_horizon_independent <- do.call(rbind, top5_horizon_independent)
+
+write.csv(all_horizon_independent,
+          "top5_independent_by_rank_and_horizon.csv",
           row.names = FALSE)
+
+message("Done! CSV saved.")
 ```
 
 
