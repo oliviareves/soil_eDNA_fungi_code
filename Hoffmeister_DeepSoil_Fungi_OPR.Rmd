@@ -15,6 +15,8 @@ When you save the notebook, an HTML file containing the code and output will be 
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
 
+
+
 #questions/things to do/tldr
 ```{r}
 #WIP STUFF: 
@@ -144,11 +146,11 @@ mytheme <-   theme(panel.grid.minor=element_blank(), #gets rid of grey and lines
 #Data Pre-Processing
 ##Loading in the data
 ```{r}
-metadata <- read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/metadata_files/2023_SlovakiaRomania_DeepSoileDNA_metadatacsv.csv", sep = ",", row.names = 1)
+metadata <- read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/metadata_files/2023_SlovakiaRomania_DeepSoileDNA_metadatacsv.csv", sep = ",", row.names = 1)
 
-taxonomy_data <- read.csv("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/metadata_files/Fungi_BLAST_Table.csv", sep = ",", stringsAsFactors = FALSE, header = TRUE)
+taxonomy_data <- read.csv("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/metadata_files/FUNGI_IDENTIFICATION_MOST_ABUNDANT_new.csv", sep = ",", stringsAsFactors = FALSE, header = TRUE)
 
-otutab_fun  <-  read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/metadata_files/Fungi_OTU_Table.csv", sep = ",", row.names = 1)
+otutab_fun  <-  read.delim("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/metadata_files/FUNGI_OTU_TABLE_new.csv", sep = ",", row.names = 1)
 ```
 ##Taxonomy Best hits for fungi- tijana
 ```{r}
@@ -160,17 +162,16 @@ colnames(taxonomy_data_fun)
 taxonomy_data_fun <- taxonomy_data_fun %>%
   filter(STATUS != "NO HIT")
 
-# Split SEQ TITLE into OTU_ID, Mostabund, and Size
-taxonomy_data_fun <- taxonomy_data_fun %>%
-  separate(`SEQ.TITLE`, into = c("OTU_ID", "Mostabund", "Size"), sep = "\\|", remove = TRUE, fill = "right")
+# Split SEQ TITLE into OTU_ID, Mostabund, and Size- ALREADY DID THIS IN EXCEL
+#taxonomy_data_fun <- taxonomy_data_fun %>%
+  #separate(`SEQ.TITLE`, into = c("OTU_ID", "Mostabund", "Size"), sep = "\\|", remove = TRUE, fill = "right") 
 
-# Split Description into taxonomic levels and other metadata, handle missing pieces
+# Split Description into taxonomic levels and other metadata, handle missing pieces- ALREADY DID THIS IN EXCEL
 #taxonomy_data_fun <- taxonomy_data_fun %>%
   #separate(Description, into = c("Species_hypothesis", "Accession_number", "Taxonomy", "Ecology"), sep = "\\|", remove = TRUE, fill = "right") %>%
   #separate(Taxonomy, into = c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"), sep = ";", remove = TRUE, fill = "right") %>%
   #separate(Ecology, into = c("Ecology_primary"), sep = "\\*", extra = "drop", fill = "right")
 
-#ALREADY DID THIS AS PART OF SEED2 TUTORIAL IN EXCEL.
 colnames(taxonomy_data_fun)
 
 #I'm a little confused on this step:
@@ -208,9 +209,7 @@ final_hits_fun <- final_hits_fun %>%
 #Count how many sequences per OTU
 otutab_fun$Counts <- rowSums(otutab_fun)
 # Check the minimum number
-min(otutab_fun$Counts) #when I run this, I get [1] 0 instead of [1] 1
-otutab_fun <- otutab_fun[otutab_fun$Counts > 0, ]
-min(otutab_fun$Counts) #this fixes it
+min(otutab_fun$Counts) #when I run this, I get [1] 1, like in Tijana's code
 
 #joining otu table with taxonomy
 otutax_fun <- left_join(rownames_to_column(otutab_fun, "OTU_ID"), taxonomy_data_fun, by = "OTU_ID")
@@ -218,10 +217,6 @@ otutax_fun <- left_join(rownames_to_column(otutab_fun, "OTU_ID"), taxonomy_data_
 # Display fungal ecology categories 
 
 unique(otutax_fun$FunctionalGuild1)
-
-#getting rid of unnecessary columns- not in tijana's code
-otutax_fun <- otutax_fun %>%
-  select(-no.hit)
 
 #displaying all columns in new joined table
 colnames(otutax_fun)
@@ -270,8 +265,8 @@ head(otutax_filtered_fun$Genus_ecology)
 #split again into filtered otu and tax (to use in phyloseq) [, 2:(ncol(otu_table) + 1)]
 
 otutab_filtered_fun <- otutax_filtered_fun %>% 
-  select(1:161) %>% #takes out counts column
-  remove_rownames() %>% 
+  select(1:(ncol(otutab_fun))) %>% 
+  remove_rownames %>% 
   column_to_rownames(var = "OTU_ID")
 
 tax_filtered_fun <- otutax_filtered_fun %>% 
@@ -313,7 +308,7 @@ diversity <- print(list(rownames_to_column(metadata, "Sample_ID"),
                        rownames_to_column(evenness, "Sample_ID"))) %>%
   reduce(left_join, by = "Sample_ID")
 
-write.csv(diversity, "C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/metadata_files/diversity.csv")
+write.csv(diversity, "C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/metadata_files/diversity.csv")
 
 #the low diversity associated with HOF120 corresponds to the incredibly low read count (4)- check notepad file 
 
@@ -399,7 +394,7 @@ annotated_fun_div <- annotate_figure(arranged_fun_div,
 
 # Plot combined and annotated graph
 plot(annotated_fun_div)
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/alphadiversity_tijana/annotated_fun_div.png",plot=annotated_fun_div,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/alphadiversity_tijana/annotated_fun_div.png",plot=annotated_fun_div,width = 14, height = 8, units = "in")
 
 #Olivia's code 
 # Create a new factor variable for the boxplot version
@@ -469,7 +464,7 @@ boxplot_richness_horizon
 
 # Display
 plot(annotated_horizon_boxplots)
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/boxplot_richness_horizon.png",plot=boxplot_richness_horizon,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/annotated_horizon_boxplots.png",plot=annotated_horizon_boxplots,width = 14, height = 8, units = "in")
 
 ```
 ##Stats for Alpha Diversity- tijana
@@ -588,11 +583,6 @@ library(nlme)
 library(car)
 
 table(diversity$Soil_Horizon, diversity$Plot_ID)
-# or more simply:
-diversity %>%
-  group_by(Soil_Horizon) %>%
-  summarise(n_obs = n(), n_plots = n_distinct(Plot_ID))
-
 # ----------------------------
 # CHECKING FOR CORRELATIONS 
 # ----------------------------
@@ -613,9 +603,9 @@ ggpairsplot
 
 # ANOVA — tests if continuous variable differs across categorical groups
 summary(aov(C_in_g_per_m_square ~ Soil_Horizon, data = diversity))
+#yes
 
-
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/alphadiversity_nlme/ggpairsplot.png",plot=ggpairsplot,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/alphadiversity_nlme/ggpairsplot.png",plot=ggpairsplot,width = 14, height = 8, units = "in")
 #CORRELATIONS
 #*** 0.001 
 #** 0.01
@@ -629,7 +619,7 @@ ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/202
 shapiro.test(diversity$richness) #while this is important, this can be validated later with qqplots of residuals of model
 #evenness: not normal
 #shannon: not normal
-#richness: 0.02: not normal
+#richness: 0.06: normal
 
 # ----------------------------
 # OPTIONAL SCALING OF VARIABLES (?)
@@ -723,6 +713,7 @@ qqline(residuals,col="red") #normal residuals
 # Histogram of residuals
 Anova(crichnessmodel2)
 
+#same trends with evenness and shannon
 
 # ----------------------------
 # How is fungal richness influenced by soil depth and nitrogen?
@@ -891,7 +882,7 @@ plot_A <- ggplot(plot_A, aes(x = x, y = predicted)) +
   theme_bw()
 
 plot_A
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/plot_A.png",plot=plot_A,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/plot_A.png",plot=plot_A,width = 14, height = 8, units = "in")
 
 # ---------------------------------------
 # nitrogen by depth *WIP
@@ -942,7 +933,7 @@ C_horizon_richness_plot <- plot_grid(plot_C_richness, plot_Horizon_richness, nco
 
 C_horizon_richness_plot
 
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/alphadiversity_nlme/C_horizon_richness_plot.png",plot=C_horizon_richness_plot,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/alphadiversity_nlme/C_horizon_richness_plot.png",plot=C_horizon_richness_plot,width = 14, height = 8, units = "in")
 
 # =========================================================
 # 2. PLOTTING NITROGEN EFFECT ON RICHNESS (continuous) AND SOIL HORIZON (CATEGORICAL) ON RICHNESS
@@ -988,7 +979,7 @@ N_horizon_richness_plot <- plot_grid(plot_N_richness, plot_Horizon_richness_N, n
 
 N_horizon_richness_plot
 
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/alphadiversity_nlme/N_horizon_richness_plot.png",plot=N_horizon_richness_plot,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/alphadiversity_nlme/N_horizon_richness_plot.png",plot=N_horizon_richness_plot,width = 14, height = 8, units = "in")
 
 # =========================================================
 # 3. PLOTTING C:N RATIO EFFECT ON RICHNESS (continuous) AND SOIL HORIZON (CATEGORICAL) ON RICHNESS
@@ -1034,7 +1025,7 @@ CN_horizon_richness_plot <- plot_grid(plot_CN_richness, plot_Horizon_richness_CN
 
 CN_horizon_richness_plot
 
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/alphadiversity_nlme/CN_horizon_richness_plot.png",plot=CN_horizon_richness_plot,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/alphadiversity_nlme/CN_horizon_richness_plot.png",plot=CN_horizon_richness_plot,width = 14, height = 8, units = "in")
 
 
 ###PER LAYER###
@@ -1117,7 +1108,7 @@ plot_4 <- ggplot(plot_4, aes(x = x, y = predicted)) +
 layerplots <- plot_grid(plot_FH, plot_1, plot_2, plot_3, plot_4, ncol = 5)
 
 layerplots
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/layerplots.png",plot=layerplots,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs/layerplots.png",plot=layerplots,width = 14, height = 8, units = "in")
 
 ```
 #Beta Diversity
@@ -1135,7 +1126,7 @@ library(ggplot2)
 
 otu_hell_fun <- as.data.frame(decostand(t_otutable, method = "hell"))
 
-# remove unwanted sample
+# remove unwanted sample- MAKE SURE TO CHECK THIS WITH NEW DATA
 otu_hell_fun <- otu_hell_fun[rownames(otu_hell_fun) != "HOF120", ]
 
 # ----------------------------
@@ -1194,7 +1185,7 @@ NMDS_plot <- ggplot(final_NMDS,
 
 NMDS_plot
 
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/NMDS_plot_only.png",plot=NMDS_plot,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/NMDS_plot_only.png",plot=NMDS_plot,width = 14, height = 8, units = "in")
 ```
 ###NMDS with convex hulls (organized by soil horizon)- olivia/tijana
 ```{r}
@@ -1273,7 +1264,7 @@ NMDS_plot_hulls <- ggplot(final_NMDS,
                                 "4"   = "#e63946"))
 
 NMDS_plot_hulls
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/soilhorizon/NMDS_plot_hulls_soilhorizon.png",plot=NMDS_plot_hulls,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/soilhorizon/NMDS_plot_hulls_soilhorizon.png",plot=NMDS_plot_hulls,width = 14, height = 8, units = "in")
 ```
 
 ###Plotting NMDS for soil horizon vs forest stand with environmental arrows
@@ -1364,7 +1355,7 @@ NMDS_plot_envfit <- ggplot(final_NMDS,
          linetype = guide_legend(order = 3))
 NMDS_plot_envfit
 
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/soilhorizon/NMDS_plot_envfit.png",plot=NMDS_plot_envfit,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/soilhorizon/NMDS_plot_envfit.png",plot=NMDS_plot_envfit,width = 14, height = 8, units = "in")
 
 
 data.envfit.nmds$vectors$pvals
@@ -1440,7 +1431,7 @@ NMDS_plot_hulls_country <- ggplot(final_NMDS,
                                 "Slovakia"   = "#a8dadc"))
 
 NMDS_plot_hulls_country
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/country/NMDS_plot_hulls_country.png",plot=NMDS_plot_hulls_country,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/country/NMDS_plot_hulls_country.png",plot=NMDS_plot_hulls_country,width = 14, height = 8, units = "in")
 
 ```
 ###NMDS with convex hulls (organized by forest stands)
@@ -1512,7 +1503,7 @@ scale_fill_manual(values = c("Badin"  = "darkred",
                                  "Izvoarele_Nerei "   = "darkblue"))
 
 NMDS_plot_hulls1
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/foreststand/NMDS_plot_hulls_foreststand.png",plot=NMDS_plot_hulls1,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/foreststand/NMDS_plot_hulls_foreststand.png",plot=NMDS_plot_hulls1,width = 14, height = 8, units = "in")
 ```
 ##Stats for beta diversity
 ```{r}
@@ -1552,7 +1543,7 @@ betadisp_SH<-ggplot(data_for_plot, aes(x = Group, y = Distance)) +
        x = "Group",
        y = "Distance to Centroid") +
   geom_jitter(width = 0.2, color = "blue", size = 1.5, alpha = 0.5)
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/soilhorizon/betadisp_SoilHorizon.png",plot=betadisp_SH,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/soilhorizon/betadisp_SoilHorizon.png",plot=betadisp_SH,width = 14, height = 8, units = "in")
 
 #FOREST STANDS#
 # Check beta dispersion of the data, if there is high variability within treatments
@@ -1578,7 +1569,7 @@ betadisp_ForestStand<-ggplot(data_for_plot1, aes(x = Group, y = Distance)) +
        x = "Group",
        y = "Distance to Centroid") +
   geom_jitter(width = 0.2, color = "blue", size = 1.5, alpha = 0.5)
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/foreststand/betadisp_ForestStand.png",plot=betadisp_ForestStand,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/foreststand/betadisp_ForestStand.png",plot=betadisp_ForestStand,width = 14, height = 8, units = "in")
 
 #COUNTRIES#
 # Check beta dispersion of the data, if there is high variability within treatments
@@ -1604,7 +1595,7 @@ betadisp_country<-ggplot(data_for_plot2, aes(x = Group, y = Distance)) +
        x = "Group",
        y = "Distance to Centroid") +
   geom_jitter(width = 0.2, color = "blue", size = 1.5, alpha = 0.5)
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/country/betadisp_country.png",plot=betadisp_country,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/country/betadisp_country.png",plot=betadisp_country,width = 14, height = 8, units = "in")
 
 ```
 ###Permanova Models
@@ -1818,8 +1809,8 @@ ecology_plot <- generate_relative_abundance_plot(finmer_aggregate, "Soil_Horizon
 print(genus_plot)
 print(ecology_plot)
 
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/relativeabundance/genus_plot.png",plot=genus_plot,width = 14, height = 8, units = "in")
-ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/data_analysis/Hoffmeister_DeepSoil_Fungi/R_outputs/betadiversity/relativeabundance/ecology_plot.png",plot=ecology_plot,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/relativeabundance/genus_plot.png",plot=genus_plot,width = 14, height = 8, units = "in")
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/relativeabundance/ecology_plot.png",plot=ecology_plot,width = 14, height = 8, units = "in")
 ```
 
 ```{r}
