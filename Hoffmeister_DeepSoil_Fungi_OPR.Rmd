@@ -15,23 +15,24 @@ When you save the notebook, an HTML file containing the code and output will be 
 
 The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
 
+# redirect R temp files to local drive instead of OneDrive
+tempdir_local <- "C:/Users/reves/AppData/Local/Temp/R_temp"
+dir.create(tempdir_local, showWarnings = FALSE)
+Sys.setenv(TMPDIR = tempdir_local)
+Sys.setenv(TMP = tempdir_local)
+Sys.setenv(TEMP = tempdir_local)
 
 
 #questions/things to do/tldr
 ```{r}
-#WIP STUFF: 
-#per layer models- log transform species richness? 
-#plotting nitrogen by depth?
-#plotting soil horizon?
-#overall checking coefficients, significance values (e.g. anova)
-#maybe making a plan for jenyk, asking him some questions 
-
-#QUESTIONS
+#QUESTIONS: 
+#per layer models- before doing this, should i log transform species richness? also, should i even DO per layer models?
 #do covariates need to be centered and scaled before model fitting?
 
-#TLDR
+#OTHER
 #the alpha and beta diversity code that tijana is running is for categorical variables (except for the environmental fitting, where it is showing continuous variables on the ordination plot)
 #I am trying to run nlme regressions for continuous variables
+#I have some "work in progress" tabs that i am still working through, so don't mind those
 
 ```
 
@@ -427,6 +428,10 @@ boxplot_richness_horizon <- generate_horizon_boxplot(
   color_palette5
 )
 
+boxplot_richness_horizon
+
+ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/boxplot_richness_horizon.png",plot=boxplot_richness_horizon,width = 14, height = 8, units = "in")
+
 boxplot_shannon_horizon <- generate_horizon_boxplot(
   diversity,
   "shannon",
@@ -459,8 +464,6 @@ annotated_horizon_boxplots <- annotate_figure(
     face = "bold"
   )
 )
-
-boxplot_richness_horizon
 
 # Display
 plot(annotated_horizon_boxplots)
@@ -634,7 +637,7 @@ shapiro.test(diversity$richness) #while this is important, this can be validated
     #scale
  # ))
 ```
-###How is C and N (continuous) influenced by soil depth (categorical)? 
+###How is C and N (continuous) influenced by soil depth (categorical)?- laxmi's findings-repetitive 
 ```{r}
 # ----------------------------
 # How is soil carbon influenced by depth?
@@ -679,7 +682,7 @@ Anova(nitrogendepthmodel)
 # How is fungal richness/shannon/evenness influenced by soil depth and carbon?
 # ----------------------------
 
-#richness
+#richness- most in use
 crichnessmodel<-lme(richness ~ C_in_g_per_m_square +Soil_Horizon, random=list(Plot_ID=~1), data = diversity) 
 summary(crichnessmodel)
 summary(crichnessmodel)$tTable
@@ -743,7 +746,7 @@ qqline(residuals,col="red") #normal residuals
 # Histogram of residuals
 Anova(CNrichnessmodel)
 #RESULTS
-#after accounting for soil horizon, C:N ratio is  a significant predictor of richness. soil horizon is significantly decreasing fungal richness as you go deeper in the profile. 
+#after accounting for soil horizon, C:N ratio is not a significant predictor of richness. soil horizon is significantly decreasing fungal richness as you go deeper in the profile. 
 
 #checking r2 at the end because theres issues with the mumin package 
 #reminder: conditional r squared is amount of explained variance for the entire model; marginal r squared: how much of this variance is attributed to the fixed effects alone
@@ -755,7 +758,7 @@ r.squaredGLMM(Nrichnessmodel)
 r.squaredGLMM(CNrichnessmodel) 
 
 ```
-###Trying the nlme models per soil layer
+###Trying the nlme models per soil layer- WORK IN PROGRESS
 ```{r}
 #PER SOIL HORIZON LAYER *WIP
 #BEFORE RUNNING THESE NEXT MODELS: might think about log transforming the species richness- the qqplots for some of them are a bit concerning. 
@@ -1028,7 +1031,7 @@ CN_horizon_richness_plot
 ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/alphadiversity_nlme/CN_horizon_richness_plot.png",plot=CN_horizon_richness_plot,width = 14, height = 8, units = "in")
 
 
-###PER LAYER###
+###PER LAYER###- WORK IN PROGRESS
 
 plot_FH <- predict_response(
   FH_model,
@@ -1267,7 +1270,7 @@ NMDS_plot_hulls
 ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/2029Reves_Soil_eDNA_specific_documents/metabarcoding/Hoffmeister_DeepSoil_Fungi/R_outputs_new/betadiversity/soilhorizon/NMDS_plot_hulls_soilhorizon.png",plot=NMDS_plot_hulls,width = 14, height = 8, units = "in")
 ```
 
-###Plotting NMDS for soil horizon vs forest stand with environmental arrows
+###Plotting NMDS for soil horizon with environmental arrows
 ```{r}
 library(vegan)
 library(ggplot2)
@@ -1815,151 +1818,6 @@ ggsave("C:/Users/reves/OneDrive - CZU v Praze/2029RevesDissertationMaterials/202
 
 ```{r}
 # ----------------------------
-# RELATIVE ABUNDANCE - TOP 5 PER TAXONOMIC RANK- WIP
+# RELATIVE ABUNDANCE - want to figure out top taxa per layer- WORK IN PROGRESS
 # ----------------------------
-
-library(phyloseq)
-library(ggplot2)
-library(dplyr)
-library(cowplot)
-
-# ----------------------------
-# 1. CREATE PHYLOSEQ OBJECT (if not already done)
-# ----------------------------
-otu_fin2 <- otu_table(otutab_filtered_fun, taxa_are_rows = TRUE)
-tax_fin2 <- tax_table(as.matrix(tax_filtered_fun))
-mapping_fin2 <- sample_data(metadata)
-
-finmer2 <- phyloseq(otu_fin2, tax_fin2, mapping_fin2)
-
-# calculate relative abundance
-finmer2_relabund <- transform_sample_counts(finmer2, function(x) { x / sum(x) })
-
-# number of samples
-n_samples <- nsamples(finmer2)
-
-# ----------------------------
-# 2. DEFINE RANKS
-# adjust to match your colnames(tax_table(finmer2)) exactly
-# ----------------------------
-tax_ranks <- c("Phylum", "Class", "Order", "Family", "Genus","Species")
-
-# ----------------------------
-# 3. LOOP AND PRINT TOP 5 PER RANK
-# ----------------------------
-top5_results <- list()  # stores results if you want to access them later
-
-for (tax_rank in tax_ranks) {
-  
-  rank_sums_rel <- tapply(taxa_sums(finmer2_relabund),
-                          tax_table(finmer2_relabund)[, tax_rank],
-                          sum, na.rm = TRUE)
-  
-  top5_rel <- data.frame(
-    Rank                    = tax_rank,
-    Taxa                    = names(sort(rank_sums_rel, decreasing = TRUE)[1:5]),
-    Mean_relative_abundance = round(sort(rank_sums_rel, decreasing = TRUE)[1:5] / n_samples, 4),
-    Percentage              = paste0(round(sort(rank_sums_rel, decreasing = TRUE)[1:5] / n_samples * 100, 2), "%"),
-    row.names               = NULL
-  )
-  
-  top5_results[[tax_rank]] <- top5_rel
-  
-  cat("\n--- Top 5", tax_rank, "---\n")
-  print(top5_rel)
-}
-
-#ALTERNATIVE METHOD
-# ----------------------------
-# TOP 5 PER TAXONOMIC RANK BY SOIL HORIZON (INDEPENDENT PER HORIZON)
-# ----------------------------
-
-library(phyloseq)
-library(dplyr)
-
-# ----------------------------
-# 1. CREATE PHYLOSEQ OBJECT
-# ----------------------------
-otu_fin2 <- otu_table(otutab_filtered_fun, taxa_are_rows = TRUE)
-tax_fin2 <- tax_table(as.matrix(tax_filtered_fun))
-mapping_fin2 <- sample_data(metadata)
-
-finmer2 <- phyloseq(otu_fin2, tax_fin2, mapping_fin2)
-finmer2
-
-# calculate relative abundance
-finmer2_relabund <- transform_sample_counts(finmer2, function(x) { x / sum(x) })
-
-# ----------------------------
-# 2. MELT PHYLOSEQ TO DATAFRAME
-# ----------------------------
-finmer2_melt <- psmelt(finmer2_relabund)
-
-# make sure Soil_Horizon is factored correctly
-finmer2_melt$Soil_Horizon <- factor(finmer2_melt$Soil_Horizon,
-                                     levels = c("FH", "1", "2", "3", "4"))
-
-# also trim whitespace just in case
-finmer2_melt$Soil_Horizon <- trimws(finmer2_melt$Soil_Horizon)
-finmer2_melt$Soil_Horizon <- factor(finmer2_melt$Soil_Horizon,
-                                     levels = c("FH", "1", "2", "3", "4"))
-
-# ----------------------------
-# 3. DEFINE RANKS
-# adjust to match your colnames(tax_table(finmer2)) exactly
-# ----------------------------
-tax_ranks <- c("Phylum", "Class", "Order", "Family", "Genus")
-
-# double check column names match:
-colnames(tax_table(finmer2))
-
-# ----------------------------
-# 4. LOOP THROUGH EACH RANK
-# ----------------------------
-top5_horizon_independent <- list()
-
-for (tax_rank in tax_ranks) {
-  
-  # aggregate mean relative abundance per horizon per taxon
-  horizon_sums <- finmer2_melt %>%
-    group_by(Soil_Horizon, .data[[tax_rank]]) %>%
-    dplyr::summarise(
-      Mean_relative_abundance = round(mean(Abundance), 4),
-      Percentage = paste0(round(mean(Abundance) * 100, 2), "%"),
-      .groups = "drop"
-    )
-  
-  # rename the tax_rank column to "Taxa" — base R approach, works in all dplyr versions
-  colnames(horizon_sums)[colnames(horizon_sums) == tax_rank] <- "Taxa"
-  
-  # select top 5 WITHIN each horizon independently
-  top5_per_horizon <- horizon_sums %>%
-    group_by(Soil_Horizon) %>%
-    slice_max(order_by = Mean_relative_abundance, n = 5) %>%
-    mutate(Rank = tax_rank,
-           Horizon_Rank = row_number()) %>%
-    ungroup() %>%
-    arrange(Soil_Horizon, desc(Mean_relative_abundance))
-  
-  top5_horizon_independent[[tax_rank]] <- top5_per_horizon
-  
-  cat("\n--- Top 5", tax_rank, "per Soil Horizon (independent) ---\n")
-  print(top5_per_horizon)
-}
-
-# ----------------------------
-# 5. COMBINE AND SAVE AS CSV
-# ----------------------------
-all_horizon_independent <- do.call(rbind, top5_horizon_independent)
-
-write.csv(all_horizon_independent,
-          "top5_independent_by_rank_and_horizon.csv",
-          row.names = FALSE)
-
-message("Done! CSV saved.")
-```
-
-
-
-
 
